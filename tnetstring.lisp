@@ -3,6 +3,7 @@
 (in-package #:tnetstring)
 
 (declaim (optimize (speed 3)))
+
 (defun make-keyword (key)
   (intern (camel-case-to-lisp key)
           (find-package 'keyword)))
@@ -39,51 +40,62 @@
 				   while (not (eq c #\:))
 				   do (write-char c s)))))
        (payload (make-string length :initial-element #\Nul))
-       (_ (read-sequence payload stream))
+       (position (file-position stream))
+       (seek (file-position stream (+ position length)))
        (payload-type (read-char stream)))
-    (declare (ignore _))
-    (values payload payload-type)))
-
+    (file-position stream position)
+    (assert seek)
+    (values length payload-type)))
 
 (defun parse-tnetstream (stream)
-  "Parse a string as netstring"
-  (multiple-value-bind (payload payload-type) (parse-payload stream)
-    (ecase payload-type
-      (#\# (parse-integer payload))
-      (#\" payload)
-      (#\} (parse-dict payload))
-      (#\] (parse-list payload))
-      (#\! (equal payload "true"))
-      (#\~ nil)
-      (#\, payload))))
+  "Parse netstring in seekable stream"
+  (multiple-value-bind (length payload-type) (parse-payload stream)
+    (let ((returnme
+	   (ecase payload-type
+	     (#\# (let ((str (make-string length)))
+		    (read-sequence str stream)
+		    (parse-integer str)))
+	     (#\" (let ((str (make-string length)))
+		    (read-sequence str stream)
+		    str))
+	     (#\} (parse-dict stream length))
+	     (#\] (parse-list stream length))
+	     (#\! (progn
+		    (file-position stream (+ (file-position stream) length))
+		    (= length 4)))
+	     (#\~ nil)
+	     (#\, (let ((str (make-string length)))
+		    (read-sequence str stream)
+		    str)))))
+      (read-char stream)
+      returnme)))
 
 (defun parse-tnetstring (string)
   (with-input-from-string (s string)
     (parse-tnetstream s)))
 
-(defun parse-list (data)
-  (declare (type string data))
-  (if (= (length data) 0)
+(defun parse-list (stream length)
+  (if (= length 0)
     nil
-    (with-input-from-string (s data)
-      (loop for value = (parse-tnetstream s)
-          collect value
-          while (not (null (peek-char nil s nil nil)))))))
+    (let ((end (+ (file-position stream) length)))
+      (loop for value = (parse-tnetstream stream)
+       collect value
+       while (< (file-position stream) end)))))
 
 (defun parse-pair (stream)
   (let* ((key (parse-tnetstream stream))
 	 (value (parse-tnetstream stream)))
       (values key value)))
 
-(defun parse-dict (data)
-  (declare (type string data))
+
+(defun parse-dict (stream length)
   (let ((new-hash (make-hash-table)))
-    (if (= (length data) 0)
-      (values new-hash data)
-      (with-input-from-string (s data)
-	(loop for (key value) = (multiple-value-list (parse-pair s))
-            do (setf (gethash (make-keyword key) new-hash) value)
-            when (null (peek-char nil s nil nil)) return (values new-hash))))))
+    (if (= length 0)
+      new-hash
+      (let ((end (+ (file-position stream) length)))
+	(loop for (key value) = (multiple-value-list (parse-pair stream))
+	   do (setf (gethash (make-keyword key) new-hash) value)
+	   when (>= (file-position stream) end) return (values new-hash))))))
 
 (defgeneric dump-tnetstring (data &optional stream))
 
