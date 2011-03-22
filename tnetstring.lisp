@@ -159,8 +159,6 @@
   (with-output-to-string (s)
     (dump-tnetstring data s)))
 
-(defgeneric dump-tnetstring (data stream))
-
 (defun output-netstring (data identifier  stream)
   "Internal function used by dump-tnetstring"
   (declare (type string data)
@@ -172,42 +170,66 @@
   (write-char identifier stream))
 
 
-(defmethod dump-tnetstring ((n integer)  stream)
-  (declare (type stream stream))
+
+(defun dump-tnetstring-int (n stream)
+  (declare (type stream stream)
+	   (type integer n))
   (output-netstring (format nil "~D" n) #\# stream))
 
-(defmethod dump-tnetstring ((n real)  stream)
-  (declare (type stream stream))
+
+(defun dump-tnetstring-float (n stream)
+  (declare (type stream stream)
+	   (type real n))
   (format stream "~f" (float n 1l0)))
 
-(defmethod dump-tnetstring ((string string)  stream)
-  (output-netstring string #\, stream))
 
-(defmethod dump-tnetstring ((h hash-table)  stream)
-  (declare (type stream stream))
+
+(defun dump-tnetstring-hash (h stream)
+  (declare (type stream stream)
+	   (type hash-table h))
   (output-netstring
-    (with-output-to-string (s)
-      (loop for k being the hash-key of h
-            do (dump-tnetstring k s)
-            do (dump-tnetstring (gethash k h) s)))
-    #\} stream))
+   (with-output-to-string (s)
+     (loop for k being the hash-key of h
+	for v being the hash-value of h
+	do (dump-tnetstring k s)
+	do (dump-tnetstring v s)))
+   #\} stream))
 
-(defmethod dump-tnetstring ((l list)  stream)
-  (declare (type stream stream))
+
+(defun dump-tnetstring-list (l stream)
+  (declare (type list l)
+	   (type stream stream))
   (output-netstring
-    (with-output-to-string (s)
-      (loop for item in l do (dump-tnetstring item s)))
-    #\] stream))
+   (with-output-to-string (s)
+     (loop for item in l do (dump-tnetstring item s)))
+   #\] stream))
 
-(defmethod dump-tnetstring ((n null)  stream)
-  (declare (type stream stream))
-  (declare (ignore n))
-  (write-sequence "0:~" stream))
+(defun dump-tnetstring-symbol (s stream)
+  (declare (type symbol s)
+	   (type stream stream))
+  (output-netstring (lisp-to-camel-case (symbol-name s)) #\, stream))
 
-(defmethod dump-tnetstring ((s symbol)  stream)
+(defun dump-tnetstring (data stream)
   (declare (type stream stream))
-  (if (eq s t) (write-sequence "4:true!" stream)
-    (dump-tnetstring (lisp-to-camel-case (symbol-name s)) stream)))
+  (cond
+    ((typep data 'string)
+     (output-netstring data #\, stream))
+    ((typep data 'integer)
+     (dump-tnetstring-int data stream))
+    ((typep data 'hash-table)
+     (dump-tnetstring-hash data stream))
+    ((typep data 'real)
+     (dump-tnetstring-float data stream))
+    ((null data)
+     (write-sequence "0:~" stream))
+    ((typep data 'list)
+     (dump-tnetstring-list data stream))
+    ((eq t data)
+     (write-sequence "4:true!" stream))
+    ((typep data 'symbol)
+     (dump-tnetstring-symbol data stream))
+    (t (assert nil))))
+
 
 (defparameter *tests* 
   (list (list "0:}" (make-hash-table))
