@@ -1,4 +1,5 @@
 ;;;; tnetstring.lisp
+;;;; Copyright (c) 2011 Jason Miller
 
 (in-package #:tnetstring)
 
@@ -193,6 +194,6 @@
 
 (defun test-dump ()
   (loop for (data expect) in *tests*
-        do (let ((string (dump-tnetstring expect)))
+        do (let ((string (dump-tnetstring-to-string expect)))
              (format t "~&~A~&" (equal string data))
              (format t "EXPECT: ~S GOT: ~S" data string))))
