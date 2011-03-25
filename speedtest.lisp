@@ -9,7 +9,7 @@
   (dotimes (i count)
     (loop for (data expect) in tnetstring::*tests*
 	    do (let* ((payload (tnetstring:parse-tnetstring data))
-		   (again (tnetstring::dump-tnetstring-to-string payload))
+		   (again (tnetstring:dump-tnetstring-to-string payload))
 		   (back (tnetstring:parse-tnetstring again)))
 	      back))))
 
