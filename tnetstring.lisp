@@ -7,29 +7,11 @@
   (when (with-input-from-string (s "hello") (file-position s 2))
     (push :string-seek *features*)))
 
-(declaim (optimize (speed 3)))
+(declaim (optimize (speed 3) (safety 0)))
 
 (defun make-keyword (key)
   (intern (camel-case-to-lisp key)
           (find-package 'keyword)))
-
-(defun slice (vector &key (start 0) (end -1))
-  (declare (type fixnum start end)
-	   (type string vector))
-  (let ((start (if (< start 0) (+ 1 (length vector) start) start))
-        (end (if (< end 0) (+ 1 (length vector) end) end)))
-    (declare (type fixnum start end))
-    (make-array (list (- end start)) :displaced-to vector :displaced-index-offset start
-                :element-type (array-element-type vector))))
-
-(defun find-and-split (vector value)
-  (declare (type string vector)
-	   (type character value))
-  (let ((idx (position value vector)))
-    (if idx
-      (values (slice vector :end idx)
-              (slice vector :start (1+ idx)))
-      (values vector #()))))
 
 
 ;Could switch code-char to an ASCII digit table since there are only 10 values
@@ -40,7 +22,7 @@
 
 (defun get-ns-length (stream)
   (loop
-     with total = 0
+     with total fixnum = 0
      for c = (read-char stream)
      when (eq c #\:) return total
        do (setq total (+ (- (char-code c) (char-code #\0)) (* total 10)))))
@@ -49,7 +31,7 @@
 	(declare (type stream stream))
 	(let* 
 	    ((length (get-ns-length stream))
-	     (position (file-position stream))
+	     (position (the fixnum (file-position stream)))
 	     (seek (file-position stream (+ position length)))
 	     (payload-type (read-char stream)))
 	  (declare (type fixnum position length))
@@ -113,8 +95,8 @@
 
 #+string-seek(defmacro with-partial-file ((stream length) &body b)
 	       (let ((end (gensym)))
-		 `(let ((,end (+ (file-position ,stream) ,length)))
-		    (flet ((eof-p () (>= (file-position ,stream) ,end)))
+		 `(let ((,end (+ (the fixnum (file-position ,stream)) ,length)))
+		    (flet ((eof-p () (>= (the fixnum (file-position ,stream)) ,end)))
 		      ,@b))))
 #-string-seek(defmacro with-partial-file ((stream length) &body b)
 	(declare (ignore length))
@@ -122,7 +104,7 @@
 	  ,@b))
 
 (defun parse-list (stream length)
-  (declare (type unsigned-byte length))
+  (declare (type fixnum length))
   (if (= length 0)
     nil
     (with-partial-file (stream length)
@@ -138,6 +120,8 @@
 
 
 (defun parse-dict (stream length)
+  (declare (type fixnum length)
+	   (stream stream))
   (let ((new-hash (make-hash-table)))
     (if (= length 0)
       new-hash
@@ -169,19 +153,33 @@
   (write-sequence data stream)
   (write-char identifier stream))
 
-
+(defun dump-tnetstring-fixnum (n stream)
+  (declare (type fixnum n)
+	   (type stream stream))
+  (let ((length 
+	 (loop with length of-type fixnum = (if (< n 0) 2 1)
+	    with mult of-type integer = 10
+	    with n of-type fixnum = (if (= n most-negative-fixnum) most-positive-fixnum (abs n))
+	    while (<= mult n)
+	    do (setq mult (* 10 mult) length (+ 1 length))
+	    finally (return length))))
+    (format stream "~D" length)
+    (write-char #\: stream)
+    (format stream "~D" n)
+    (write-char #\# stream)))
 
 (defun dump-tnetstring-int (n stream)
   (declare (type stream stream)
 	   (type integer n))
-  (output-netstring (format nil "~D" n) #\# stream))
+  (if (typep n 'fixnum)
+      (dump-tnetstring-fixnum n stream)
+      (output-netstring (format nil "~D" n) #\# stream)))
 
 
 (defun dump-tnetstring-float (n stream)
   (declare (type stream stream)
 	   (type real n))
-  (format stream "~f" (float n 1l0)))
-
+  (format stream "~f" (float n 1d0)))
 
 
 (defun dump-tnetstring-hash (h stream)
