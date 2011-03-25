@@ -139,9 +139,11 @@
 		  do (setf (gethash (make-keyword key) new-hash) value)
 		  when (>= (file-position stream) end) return (values new-hash))))))
 
-(defun dump-tnetstring-to-string (data)
-  (with-output-to-string (s)
-    (dump-tnetstring data s)))
+(defun dump-tnetstring (data &optional stream)
+  (if (null stream)
+      (with-output-to-string (s)
+	(dump-tnetstring-internal data s))
+      (dump-tnetstring-internal data stream)))
 
 (defun output-netstring (data identifier  stream)
   "Internal function used by dump-tnetstring"
@@ -189,8 +191,8 @@
    (with-output-to-string (s)
      (loop for k being the hash-key of h
 	for v being the hash-value of h
-	do (dump-tnetstring k s)
-	do (dump-tnetstring v s)))
+	do (dump-tnetstring-internal k s)
+	do (dump-tnetstring-internal v s)))
    #\} stream))
 
 
@@ -199,7 +201,7 @@
 	   (type stream stream))
   (output-netstring
    (with-output-to-string (s)
-     (loop for item in l do (dump-tnetstring item s)))
+     (loop for item in l do (dump-tnetstring-internal item s)))
    #\] stream))
 
 (defun dump-tnetstring-symbol (s stream)
@@ -207,7 +209,7 @@
 	   (type stream stream))
   (output-netstring (lisp-to-camel-case (symbol-name s)) #\, stream))
 
-(defun dump-tnetstring (data stream)
+(defun dump-tnetstring-internal (data stream)
   (declare (type stream stream))
   (cond
     ((typep data 'string)
@@ -265,6 +267,6 @@
 
 (defun test-dump ()
   (loop for (data expect) in *tests*
-        do (let ((string (dump-tnetstring-to-string expect)))
+        do (let ((string (dump-tnetstring expect)))
              (format t "~&~A~&" (equal string data))
              (format t "EXPECT: ~S GOT: ~S" data string))))
