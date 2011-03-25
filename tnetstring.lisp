@@ -177,13 +177,6 @@
       (dump-tnetstring-fixnum n stream)
       (output-netstring (format nil "~D" n) #\# stream)))
 
-
-(defun dump-tnetstring-float (n stream)
-  (declare (type stream stream)
-	   (type real n))
-  (format stream "~f" (float n 1d0)))
-
-
 (defun dump-tnetstring-hash (h stream)
   (declare (type stream stream)
 	   (type hash-table h))
