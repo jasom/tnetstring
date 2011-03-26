@@ -14,130 +14,77 @@
           (find-package 'keyword)))
 
 
-;Could switch code-char to an ASCII digit table since there are only 10 values
-;we care about.  That would also fix the parse-integer ignores whitspace
-;incompatibility.
-(defun parse-bin-integer (vector)
-  (parse-integer (map 'string #'code-char vector)))
-
-(defun get-ns-length (stream)
+(defun get-ns-length (string start end)
+  (declare (ignorable end))
   (loop
-     with total fixnum = 0
-     for c = (read-char stream)
-     when (eq c #\:) return total
-       do (setq total (+ (- (char-code c) (char-code #\0)) (* total 10)))))
+	     with total fixnum = 0
+	     for index = start then (1+ index)
+	     for c = (aref string index)
+	     when (eq c #\:) return (values total (1+ index))
+	     do (setq total (+ (- (char-code c) (char-code #\0)) (* total 10)))))
 
-#+string-seek(defun parse-payload (stream)
-	(declare (type stream stream))
-	(let* 
-	    ((length (get-ns-length stream))
-	     (position (the fixnum (file-position stream)))
-	     (seek (file-position stream (+ position length)))
-	     (payload-type (read-char stream)))
-	  (declare (type fixnum position length))
-	  (file-position stream position)
-	  (assert seek)
-	  (values length payload-type)))
-
-#-string-seek(defun parse-payload (stream)
-	(declare (type stream stream))
-	(let* 
-	    ((length (get-ns-length stream))
-	     (data (make-string length))
-	     (_ (read-sequence data stream))
-	     (payload-type (read-char stream)))
-	  (declare (type fixnum length))
-	  (values data payload-type)))
-
-#+string-seek(defun parse-tnetstream (stream)
-  "Parse netstring in seekable stream"
-  (multiple-value-bind (length payload-type) (parse-payload stream)
-    (let ((returnme
-	   (ecase payload-type
-	     (#\# (let ((str (make-string length)))
-		    (read-sequence str stream)
-		    (parse-integer str)))
-	     (#\" (let ((str (make-string length)))
-		    (read-sequence str stream)
-		    str))
-	     (#\} (parse-dict stream length))
-	     (#\] (parse-list stream length))
-	     (#\! (progn
-		    (file-position stream (+ (file-position stream) length))
-		    (= length 4)))
-	     (#\~ nil)
-	     (#\, (let ((str (make-string length)))
-		    (read-sequence str stream)
-		    str)))))
-      (read-char stream)
-      returnme)))
-
-#-string-seek(defun parse-tnetstream (stream)
-	"Parse netstring in seekable stream"
-	(multiple-value-bind (data payload-type) (parse-payload stream)
-	  (with-input-from-string (stream data)
-	    (let* ((length (length data))
-		   (returnme
-		    (ecase payload-type
-		      (#\# (parse-integer data))
-		      (#\" data)
-		      (#\} (parse-dict stream length))
-		      (#\] (parse-list stream length))
-		      (#\! (= length 4))
-		      (#\~ nil)
-		      (#\, data))))
-	      returnme))))
-
-(defun parse-tnetstring (string)
-	(with-input-from-string (s string)
-	  (parse-tnetstream s)))
+(defun parse-payload (string start end)
+	(declare (type string string)
+		 (type fixnum start end))
+	(multiple-value-bind (length start)
+	    (get-ns-length string start end)
+	  (let ((payload-type (aref string (+ start length))))
+	  (values start length payload-type))))
 
 
-#+string-seek(defmacro with-partial-file ((stream length) &body b)
-	       (let ((end (gensym)))
-		 `(let ((,end (+ (the fixnum (file-position ,stream)) ,length)))
-		    (flet ((eof-p () (>= (the fixnum (file-position ,stream)) ,end)))
-		      ,@b))))
-#-string-seek(defmacro with-partial-file ((stream length) &body b)
-	(declare (ignore length))
-	`(flet ((eof-p () (null (peek-char nil ,stream nil nil))))
-	  ,@b))
+(defun parse-tnetstring (string &optional (start 0) (end (1- (length string))))
+  "Parse netstring"
+  (declare (type fixnum start end)
+	   (type string string))
+  (multiple-value-bind (start length payload-type)
+      (parse-payload string start end)
+    (declare (type fixnum start length))
+    (values
+     (ecase payload-type
+       (#\, (make-array (list (- end start)) 
+			:element-type 'character
+			:displaced-to string
+			:displaced-index-offset start))
+       (#\# (parse-integer string :start start :end (+ start length)))
+       (#\} (parse-dict string start (+ start length)))
+       (#\] (parse-list string start (+ start length)))
+       (#\! (= length 4))
+       (#\~ nil))
+     (+ 1 start length))))
 
-(defun parse-list (stream length)
-  (declare (type fixnum length))
-  (if (= length 0)
+
+
+
+(defun parse-list (string start end)
+  (declare (type fixnum start end))
+  (if (= start end)
     nil
-    (with-partial-file (stream length)
-      (loop for value = (parse-tnetstream stream)
+    (loop for (value next) =
+	 (multiple-value-list (parse-tnetstring string start end))
+	 then (multiple-value-list (parse-tnetstring string next end))
        collect value
-       while (not (eof-p))))))
+       while (< next end))))
 
-(defun parse-pair (stream)
-  (let* ((key (parse-tnetstream stream))
-	 (value (parse-tnetstream stream)))
-      (values key value)))
+(defun parse-pair (string start end)
+  (multiple-value-bind (key start)
+      (parse-tnetstring string start end)
+    (multiple-value-bind (value start)
+	(parse-tnetstring string start end)
+    (values key value start))))
 
 
 
-(defun parse-dict (stream length)
-  (declare (type fixnum length)
-	   (stream stream))
+(defun parse-dict (string start end)
+  (declare (type fixnum start end)
+	   (string string))
   (let ((new-hash (make-hash-table)))
-    (if (= length 0)
-      new-hash
-      (with-partial-file (stream length)
-	(loop for (key value) = (multiple-value-list (parse-pair stream))
+    (if (= start end)
+	new-hash
+	(loop for (key value next) = (multiple-value-list (parse-pair string start end))
+	     then (multiple-value-list (parse-pair string next end))
 	   do (setf (gethash (make-keyword key) new-hash) value)
-	   when (eof-p) return (values new-hash))))))
+	   when (>= next end) return (values new-hash)))))
 
-#+nil(defun parse-dict (stream length)
-       (let ((new-hash (make-hash-table)))
-	 (if (= length 0)
-	     new-hash
-	     (let ((end (+ (file-position stream) length)))
-	       (loop for (key value) = (multiple-value-list (parse-pair stream))
-		  do (setf (gethash (make-keyword key) new-hash) value)
-		  when (>= (file-position stream) end) return (values new-hash))))))
 
 (defun dump-tnetstring (data &optional stream)
   (if (null stream)
