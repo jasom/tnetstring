@@ -186,15 +186,18 @@ then outputs to a string.  Otherwise outputs to stream"
 
 (defun digit-to-char (x) (code-char (+ (char-code #\0) x)))
 
+(let ((length-print (pprint-dispatch most-positive-fixnum)))
 (defun output-netstring (data identifier  stream)
   (declare (type string data)
 	   (type stream stream)
 	   (type character identifier))
   
-  (format stream "~D" (length data))
+  #+sbcl(funcall length-print stream (length data))
+  #-sbcl(write (length data) :stream stream)
+  ;(format stream "~D" (length data))
   (write-char #\: stream)
   (write-sequence data stream)
-  (write-char identifier stream))
+  (write-char identifier stream)))
 
 (defun dump-tnetstring-fixnum (n stream)
   (declare (type fixnum n)
