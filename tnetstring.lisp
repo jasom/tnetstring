@@ -31,6 +31,12 @@
 (defparameter *nil-encode* "0:~"
   "What nil should encode as")
 
+(defparameter *decode-table* nil
+  "An alist of symbols that should decode to particular netstrings.
+
+For example, if you set *false* to decode to tnetstring::false, then you might
+add (tnetstring::false . \"5:false!\") to this list")
+
 (declaim (optimize (speed 3) (safety 0)))
 
 (defun make-keyword (key)
@@ -246,7 +252,12 @@ then outputs to a string.  Otherwise outputs to stream"
 (defun dump-tnetstring-symbol (s stream)
   (declare (type symbol s)
 	   (type stream stream))
-  (output-netstring (lisp-to-camel-case (symbol-name s)) #\, stream))
+  (if (and
+       (not (null *decode-table*))
+       (assoc s *decode-table*))
+      (let ((x (cdr (assoc s *decode-table*))))
+	(write-sequence (cdr x) stream))
+  (output-netstring (lisp-to-camel-case (symbol-name s)) #\, stream)))
 
 (defun dump-tnetstring-internal (data stream)
   (declare (type stream stream))
