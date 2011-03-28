@@ -7,6 +7,30 @@
   (when (with-input-from-string (s "hello") (file-position s 2))
     (push :string-seek *features*)))
 
+(defparameter *dict-decode-type* :alist
+  "What to encode tnetstring 'dictionaries' into.
+   Valid values are :alist and :hash-table")
+
+(defparameter *false* nil
+  "What to decode tnetstring boolean 'false' into.")
+
+(defparameter *empty-list* nil
+  "What to decode tnetstring empty-list into")
+
+(defparameter *null* nil
+  "What to decode tnetstring null-object into")
+
+(defparameter *make-empty-dict* (lambda () (if (eq *dict-decode-type* :hash-table)
+					       (make-hash-table)
+					       nil))
+  "Function to create object when reading an empty-dictionary.
+   Unlike *empty-list* this is a function, since a fresh, empty
+   hash-table is something you might reasonably want (and is in fact
+   the default when *dict-decode-type* is :hash-table")
+
+(defparameter *nil-encode* "0:~"
+  "What nil should encode as")
+
 (declaim (optimize (speed 3) (safety 0)))
 
 (defun make-keyword (key)
@@ -59,10 +83,13 @@
 	     (#\" (let ((str (make-string length)))
 		    (read-sequence str stream)
 		    str))
-	     (#\} (parse-dict-to-alist stream length))
+	     (#\} (if (eq *dict-decode-type* :alist)
+		      (parse-dict-to-alist stream length)
+		      (parse-dict stream length)))
 	     (#\] (parse-list stream length))
 	     (#\! (progn
-		    (file-position stream (+ (the fixnum (file-position stream)) length))
+		    ;(dotimes (i length) (read-char stream))
+		    (file-position stream (+ (the fixnum (file-position stream)) (the fixnum length)))
 		    (= length 4)))
 	     (#\~ nil)
 	     (#\, (let ((str (make-string length)))
@@ -88,8 +115,11 @@
 	      returnme))))
 
 (defun parse-tnetstring (string)
+  (declare (type string string))
+  "Parses a string as a tnetstring.  Behavior is undefined if 
+   the string is not a valid tnetstring"
 	(with-input-from-string (s string)
-	  (parse-tnetstream s)))
+	  (values (parse-tnetstream s))))
 
 
 #+string-seek(defmacro with-partial-file ((stream length) &body b)
@@ -105,7 +135,7 @@
 (defun parse-list (stream length)
   (declare (type fixnum length))
   (if (= length 0)
-    nil
+    *empty-list*
     (with-partial-file (stream length)
       (loop for value = (parse-tnetstream stream)
        collect value
@@ -122,33 +152,27 @@
 	   (stream stream))
   (let ((new-hash nil))
     (if (= length 0)
-      new-hash
-      (with-partial-file (stream length)
-	(loop for (key value) = (multiple-value-list (parse-pair stream))
-	   do (push (cons key value) new-hash) 
-	   when (eof-p) return (values new-hash))))))
+	(funcall *make-empty-dict*)
+	(with-partial-file (stream length)
+	  (loop for (key value) = (multiple-value-list (parse-pair stream))
+	     do (push (cons key value) new-hash) 
+	     when (eof-p) return (values new-hash))))))
 
 (defun parse-dict (stream length)
   (declare (type fixnum length)
 	   (stream stream))
   (let ((new-hash (make-hash-table)))
     (if (= length 0)
-      new-hash
-      (with-partial-file (stream length)
-	(loop for (key value) = (multiple-value-list (parse-pair stream))
-	   do (setf (gethash (make-keyword key) new-hash) value)
-	   when (eof-p) return (values new-hash))))))
+	(funcall *make-empty-dict*)
+	(with-partial-file (stream length)
+	  (loop for (key value) = (multiple-value-list (parse-pair stream))
+	     do (setf (gethash (make-keyword key) new-hash) value)
+	     when (eof-p) return (values new-hash))))))
 
-#+nil(defun parse-dict (stream length)
-       (let ((new-hash (make-hash-table)))
-	 (if (= length 0)
-	     new-hash
-	     (let ((end (+ (file-position stream) length)))
-	       (loop for (key value) = (multiple-value-list (parse-pair stream))
-		  do (setf (gethash (make-keyword key) new-hash) value)
-		  when (>= (file-position stream) end) return (values new-hash))))))
 
 (defun dump-tnetstring (data &optional stream)
+  "Serialize data to a tnetstring.  If stream is missing or nil,
+then outputs to a string.  Otherwise outputs to stream"
   (if (null stream)
       (with-output-to-string (s)
 	(dump-tnetstring-internal data s))
@@ -157,7 +181,6 @@
 (defun digit-to-char (x) (code-char (+ (char-code #\0) x)))
 
 (defun output-netstring (data identifier  stream)
-  "Internal function used by dump-tnetstring"
   (declare (type string data)
 	   (type stream stream)
 	   (type character identifier))
@@ -237,7 +260,7 @@
     ((typep data 'real)
      (dump-tnetstring-float data stream))
     ((null data)
-     (write-sequence "0:~" stream))
+     (write-sequence *nil-encode* stream))
     ((typep data 'list)
      (dump-tnetstring-list data stream))
     ((eq t data)
