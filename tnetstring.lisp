@@ -13,19 +13,18 @@
   (intern (camel-case-to-lisp key)
           (find-package 'keyword)))
 
-
-;Could switch code-char to an ASCII digit table since there are only 10 values
-;we care about.  That would also fix the parse-integer ignores whitspace
-;incompatibility.
-(defun parse-bin-integer (vector)
-  (parse-integer (map 'string #'code-char vector)))
+#|
+(defun make-keyword (key)
+  (intern key 
+          (find-package 'keyword)))
+|#
 
 (defun get-ns-length (stream)
   (loop
      with total fixnum = 0
      for c = (read-char stream)
      when (eq c #\:) return total
-       do (setq total (+ (- (char-code c) (char-code #\0)) (* total 10)))))
+       do (setq total (+ (- (char-code c) (char-code #\0)) (the fixnum (* total 10)))))) 
 
 #+string-seek(defun parse-payload (stream)
 	(declare (type stream stream))
@@ -60,10 +59,10 @@
 	     (#\" (let ((str (make-string length)))
 		    (read-sequence str stream)
 		    str))
-	     (#\} (parse-dict stream length))
+	     (#\} (parse-dict-to-alist stream length))
 	     (#\] (parse-list stream length))
 	     (#\! (progn
-		    (file-position stream (+ (file-position stream) length))
+		    (file-position stream (+ (the fixnum (file-position stream)) length))
 		    (= length 4)))
 	     (#\~ nil)
 	     (#\, (let ((str (make-string length)))
@@ -118,6 +117,16 @@
       (values key value)))
 
 
+(defun parse-dict-to-alist (stream length)
+  (declare (type fixnum length)
+	   (stream stream))
+  (let ((new-hash nil))
+    (if (= length 0)
+      new-hash
+      (with-partial-file (stream length)
+	(loop for (key value) = (multiple-value-list (parse-pair stream))
+	   do (push (cons key value) new-hash) 
+	   when (eof-p) return (values new-hash))))))
 
 (defun parse-dict (stream length)
   (declare (type fixnum length)
@@ -145,11 +154,14 @@
 	(dump-tnetstring-internal data s))
       (dump-tnetstring-internal data stream)))
 
+(defun digit-to-char (x) (code-char (+ (char-code #\0) x)))
+
 (defun output-netstring (data identifier  stream)
   "Internal function used by dump-tnetstring"
   (declare (type string data)
 	   (type stream stream)
 	   (type character identifier))
+  
   (format stream "~D" (length data))
   (write-char #\: stream)
   (write-sequence data stream)
@@ -188,14 +200,25 @@
 	do (dump-tnetstring-internal v s)))
    #\} stream))
 
+(defun dump-tnetstring-alist (alist stream)
+  (declare (type stream stream)
+	   (type list alist))
+  (output-netstring
+   (with-output-to-string (s)
+     (loop for pair in alist
+	do (dump-tnetstring-internal (car pair) s)
+	do (dump-tnetstring-internal (cdr pair) s)))
+   #\} stream))
 
 (defun dump-tnetstring-list (l stream)
   (declare (type list l)
 	   (type stream stream))
-  (output-netstring
-   (with-output-to-string (s)
-     (loop for item in l do (dump-tnetstring-internal item s)))
-   #\] stream))
+  (if (and (consp (car l)) (keywordp (caar l)))
+      (dump-tnetstring-alist l stream)
+      (output-netstring
+       (with-output-to-string (s)
+	 (loop for item in l do (dump-tnetstring-internal item s)))
+       #\] stream)))
 
 (defun dump-tnetstring-symbol (s stream)
   (declare (type symbol s)
