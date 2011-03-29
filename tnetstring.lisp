@@ -39,15 +39,15 @@ add (tnetstring::false . \"5:false!\") to this list")
 
 (declaim (optimize (speed 3) (safety 0)))
 
+#|
 (defun make-keyword (key)
   (intern (camel-case-to-lisp key)
           (find-package 'keyword)))
+|#
 
-#|
 (defun make-keyword (key)
   (intern key 
           (find-package 'keyword)))
-|#
 
 (defun get-ns-length (stream)
   (loop
@@ -161,7 +161,7 @@ add (tnetstring::false . \"5:false!\") to this list")
 	(funcall *make-empty-dict*)
 	(with-partial-file (stream length)
 	  (loop for (key value) = (multiple-value-list (parse-pair stream))
-	     do (push (cons key value) new-hash) 
+	     do (push (cons (make-keyword key) value) new-hash) 
 	     when (eof-p) return (values new-hash))))))
 
 (defun parse-dict (stream length)
