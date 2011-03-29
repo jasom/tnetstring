@@ -37,15 +37,18 @@
 For example, if you set *false* to decode to tnetstring::false, then you might
 add (tnetstring::false . \"5:false!\") to this list")
 
-(defparameter *translate-key-name* (lambda (x) x)
+(defparameter *translate-key-name* nil
   "Function to translate names of keys for dictionaries.
 Defaults to the identity")
 
 (declaim (optimize (speed 3) (safety 0)))
 
-(defun make-keyword (key)
-  (intern (funcall *translate-key-name* key)
-	  (find-package 'keyword)))
+(let ((keywords (find-package 'keyword)))
+  (defun make-keyword (key)
+    (intern (if *translate-key-name*
+		(funcall *translate-key-name* key)
+		key)
+	    keywords)))
 
 (defun get-ns-length (stream)
   (loop
