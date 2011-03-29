@@ -45,14 +45,18 @@ Defaults to the identity")
   "Function to translate names of symbols when writing.
 Should probably be inverse of *translate-read-key*
 Defaults to the identity")
+
+(defconstant +key-package+ (find-package :keyword)
+  "Package to intern dictionary keys in")
+
 (declaim (optimize (speed 3) (safety 0)))
 
-(let ((keywords (find-package 'keyword)))
-  (defun make-keyword (key)
-    (intern (if *translate-read-key*
-		(funcall *translate-read-key* key)
-		key)
-	    keywords)))
+(defun make-keyword (key)
+  (declare (values symbol))
+  (intern (if *translate-read-key*
+	      (funcall *translate-read-key* key)
+	      key)
+	  +key-package+))
 
 (defun get-ns-length (stream)
   (loop
