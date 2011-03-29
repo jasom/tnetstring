@@ -37,16 +37,20 @@
 For example, if you set *false* to decode to tnetstring::false, then you might
 add (tnetstring::false . \"5:false!\") to this list")
 
-(defparameter *translate-key-name* nil
-  "Function to translate names of keys for dictionaries.
+(defparameter *translate-read-key* nil
+  "Function to translate names of keys when reading dictionaries.
 Defaults to the identity")
 
+(defparameter *translate-write-symbol* nil
+  "Function to translate names of symbols when writing.
+Should probably be inverse of *translate-read-key*
+Defaults to the identity")
 (declaim (optimize (speed 3) (safety 0)))
 
 (let ((keywords (find-package 'keyword)))
   (defun make-keyword (key)
-    (intern (if *translate-key-name*
-		(funcall *translate-key-name* key)
+    (intern (if *translate-read-key*
+		(funcall *translate-read-key* key)
 		key)
 	    keywords)))
 
@@ -261,7 +265,10 @@ then outputs to a string.  Otherwise outputs to stream"
        (assoc s *decode-table*))
       (let ((x (cdr (assoc s *decode-table*))))
 	(write-sequence (cdr x) stream))
-  (output-netstring (lisp-to-camel-case (symbol-name s)) #\, stream)))
+      (output-netstring (if *translate-write-symbol*
+			    (funcall *translate-write-symbol* (symbol-name s))
+			    (symbol-name s))
+			#\, stream)))
 
 (defun dump-tnetstring-internal (data stream)
   (declare (type stream stream))

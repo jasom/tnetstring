@@ -11,6 +11,7 @@
 	   :*make-empty-dict*
 	   :*nil-encode*
            :*decode-table*
-           :*translate-key-name*
+           :*translate-read-key*
+           :*translate-write-symbol*
 	   ))
 
