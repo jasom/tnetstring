@@ -51,6 +51,33 @@ Defaults to the identity")
 
 (declaim (optimize (speed 3) (safety 0)))
 
+(defstruct (fake-string-stream (:conc-name fss-))
+  (data "" :type simple-string)
+  (pos -1 :type fixnum)
+  (length 0 :type fixnum))
+
+(defun fss-read-char (fake-stream)
+  (declare (type fake-string-stream fake-stream))
+  (progn
+    (incf (fss-pos fake-stream))
+    (when (>= (fss-pos fake-stream) (fss-length fake-stream))
+      (error (make-condition 'end-of-file :stream fake-stream)))
+    (aref (fss-data fake-stream) (fss-pos fake-stream))))
+
+(defun fss-read-offset (fake-stream offset)
+  (declare (type fake-string-stream fake-stream)
+	   (type fixnum offset))
+  (aref (fss-data fake-stream) (+ (fss-pos fake-stream) offset 1)))
+
+(defun fss-consume (fake-stream count)
+  (setf (fss-pos fake-stream) (+ count (fss-pos fake-stream))))
+
+(defun fss-read-sequence (seq str)
+  (let ((l (length seq)))
+  (dotimes (i l)
+    (setf (aref seq i) (fss-read-char str)))))
+
+
 (defun make-keyword (key)
   (declare (values symbol))
   (intern (if *translate-read-key*
@@ -58,92 +85,56 @@ Defaults to the identity")
 	      key)
 	  +key-package+))
 
-(defun get-ns-length (stream)
+(defun get-ns-length (fake-stream)
   (loop
      with total fixnum = 0
-     for c = (read-char stream)
+     for c = (fss-read-char fake-stream)
      when (eq c #\:) return total
        do (setq total (+ (- (char-code c) (char-code #\0)) (the fixnum (* total 10)))))) 
 
-#+string-seek(defun parse-payload (stream)
-	(declare (type stream stream))
+(defun parse-payload (stream)
+	(declare (type fake-string-stream stream))
 	(let* 
 	    ((length (get-ns-length stream))
-	     (position (the fixnum (file-position stream)))
-	     (seek (file-position stream (+ position length)))
-	     (payload-type (read-char stream)))
-	  (declare (type fixnum position length))
-	  (file-position stream position)
-	  (assert seek)
+	     (payload-type (fss-read-offset stream length)))
+	  (declare (type fixnum length))
 	  (values length payload-type)))
 
-#-string-seek(defun parse-payload (stream)
-	(declare (type stream stream))
-	(let* 
-	    ((length (get-ns-length stream))
-	     (data (make-string length))
-	     (_ (read-sequence data stream))
-	     (payload-type (read-char stream)))
-	  (declare (type fixnum length))
-	  (values data payload-type)))
-
-#+string-seek(defun parse-tnetstream (stream)
-  "Parse netstring in seekable stream"
+(defun parse-tnetstream (stream)
   (multiple-value-bind (length payload-type) (parse-payload stream)
     (let ((returnme
 	   (ecase payload-type
 	     (#\, (let ((str (make-string length)))
-		    (read-sequence str stream)
+		    (fss-read-sequence str stream)
 		    str))
 	     (#\# (let ((str (make-string length)))
-		    (read-sequence str stream)
+		    (fss-read-sequence str stream)
 		    (parse-integer str)))
 	     (#\} (if (eq *dict-decode-type* :alist)
 		      (parse-dict-to-alist stream length)
 		      (parse-dict stream length)))
 	     (#\] (parse-list stream length))
 	     (#\! (progn
-		    ;(dotimes (i length) (read-char stream))
-		    (file-position stream (+ (the fixnum (file-position stream)) (the fixnum length)))
+		    (fss-consume stream length)
 		    (= length 4)))
 	     (#\~ nil)
 	     )))
-      (read-char stream)
+      (fss-read-char stream)
       returnme)))
 
-#-string-seek(defun parse-tnetstream (stream)
-	"Parse netstring in seekable stream"
-	(multiple-value-bind (data payload-type) (parse-payload stream)
-	  (with-input-from-string (stream data)
-	    (let* ((length (length data))
-		   (returnme
-		    (ecase payload-type
-		      (#\# (parse-integer data))
-		      (#\" data)
-		      (#\} (parse-dict stream length))
-		      (#\] (parse-list stream length))
-		      (#\! (= length 4))
-		      (#\~ nil)
-		      (#\, data))))
-	      returnme))))
-
 (defun parse-tnetstring (string)
-  (declare (type string string))
+  (declare (type simple-string string))
   "Parses a string as a tnetstring.  Behavior is undefined if 
    the string is not a valid tnetstring"
-	(with-input-from-string (s string)
-	  (values (parse-tnetstream s))))
+  (let ((fake-stream (make-fake-string-stream :data string :length (length string))))
+	  (values (parse-tnetstream fake-stream))))
 
 
-#+string-seek(defmacro with-partial-file ((stream length) &body b)
-	       (let ((end (gensym)))
-		 `(let ((,end (+ (the fixnum (file-position ,stream)) ,length)))
-		    (flet ((eof-p () (>= (the fixnum (file-position ,stream)) ,end)))
-		      ,@b))))
-#-string-seek(defmacro with-partial-file ((stream length) &body b)
-	(declare (ignore length))
-	`(flet ((eof-p () (null (peek-char nil ,stream nil nil))))
-	  ,@b))
+(defmacro with-partial-file ((stream length) &body b)
+  (let ((end (gensym)))
+    `(let ((,end (+ (fss-pos ,stream) ,length)))
+       (flet ((eof-p () (>= (fss-pos ,stream) ,end)))
+	 ,@b))))
 
 (defun parse-list (stream length)
   (declare (type fixnum length))
@@ -162,7 +153,7 @@ Defaults to the identity")
 
 (defun parse-dict-to-alist (stream length)
   (declare (type fixnum length)
-	   (stream stream))
+	   (type fake-string-stream stream))
   (let ((new-hash nil))
     (if (= length 0)
 	(funcall *make-empty-dict*)
@@ -173,7 +164,7 @@ Defaults to the identity")
 
 (defun parse-dict (stream length)
   (declare (type fixnum length)
-	   (stream stream))
+	   (type fake-string-stream stream))
   (let ((new-hash (make-hash-table)))
     (if (= length 0)
 	(funcall *make-empty-dict*)
