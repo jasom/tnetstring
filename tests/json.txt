@@ -1,46 +1,89 @@
 {"PATH":"/","host":"default","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","accept-encoding":"foo","host":"default","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/virt/tst_11/r503","accept-encoding":"foo","host":"","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/virt/tst_11/r503"}
 {"PATH":"/virt/tst_11/lowercase-path/fOO.html.PL","accept-encoding":"foo","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/virt/tst_11/lowercase-path/fOO.html.PL"}
 {"PATH":"/01_.","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/01_."}
+{"PATH":"/403/1","accept-encoding":"foo","host":"","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/403/1"}
 {"PATH":"/bp.x.y","host":"foo.example.com","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/bp.x.y"}
+{"PATH":"/conf-tst13/cond","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/conf-tst13/cond"}
 {"PATH":"/neg","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/neg"}
+{"PATH":"/conf-tst13/hex","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/conf-tst13/hex"}
+{"PATH":"/A2/neg","host":"","x-comment":"Doing with no auth","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/A2/neg"}
 {"PATH":"/A2/conf-tst13/hex","host":"","authorization":"Basic Zm9vOmJhcg==","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/A2/conf-tst13/hex"}
-{"PATH":"/index.html","connection":"keep-alive","METHOD":"ET","VERSION":"HTTP/1.0","URI":"/index.html"}
+{"PATH":"/conf-tst13/cond","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/conf-tst13/cond"}
+{"PATH":"/index.html","connection":"keep-alive","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/index.html"}
 {"PATH":"/nothere/5.1-switch-5.2","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/nothere/5.1-switch-5.2"}
-{"PATH":"/nothere/5.2-neg","connection":"keep-alive","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/nothere/5.2-neg"}
-{"PATH":"/index.html/","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/index.html/"}
-{"PATH":"/","host":".","METHOD":"EAD","VERSION":"HTTP/1.1","URI":"/"}
-{"PATH":"/","host":"abcd","METHOD":"LAH","VERSION":"HTTP/1.1","URI":"/"}
-{"PATH":"/","connection":"close","host":"foo.example.com","METHOD":"ETE","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/nothere/5.1-switch-5.2","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/nothere/5.1-switch-5.2"}
+{"PATH":"/nothere/5.1-switch-5.2","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/nothere/5.1-switch-5.2"}
+{"PATH":"/index.html/foo","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/index.html/foo"}
+{"PATH":"/","host":"foo.EXAMPLE.Com","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","accept":"text/*, text/html;q=0","host":"foo.EXAMPLE.Com","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","host":".","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","host":".","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","host":"abcd","METHOD":"BLAH","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","METHOD":"DELETE","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","connection":"close","host":"foo.example.com","METHOD":"DELETE","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","expect":"100-continue","connection":"close","host":"default","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","range":"1-2","host":"default","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","if-unmodified-since":"Tue, 12 Oct 2004 07:02:24 GMT","host":"default","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","METHOD":"BLAH","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://default:x/"}
 {"PATH":"/fifo","connection":"close","host":"default","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/fifo"}
+{"PATH":"//fifo","connection":"close","host":"default","METHOD":"GET","VERSION":"HTTP/1.1","URI":"//fifo","FRAGMENT":"seg"}
 {"PATH":"/%2f","host":"def","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/%2f"}
+{"PATH":"/passwd","connection":"close","host":"/etc","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/passwd"}
+{"PATH":"/","accept-encoding":"blah","host":"","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"http://default/"}
 {"PATH":"/","content-length":"999","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://x/"}
 {"PATH":"/","transfer-encoding":"chunked","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://x/"}
+{"PATH":"/","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://default/index.html~"}
 {"PATH":"/","accept":"a/b ; blah=\"\\","host":"default","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","host":"default","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","range":"bytes = 1-","connection":"close","host":"default","if-range":"foo","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","host":".","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","host":"..","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/"}
 {"PATH":"/","content-type":"foo","host":"foo.example.com","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","content-language":"foo","host":"foo.example.com","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/","transfer-encoding":"identity","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://default/"}
 {"PATH":"/","transfer-encoding":"identity","content-length":"0","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://default/"}
+{"PATH":"/","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://x.y./"}
+{"PATH":"/","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://./"}
 {"PATH":"/","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://x.y!/"}
 {"PATH":"/","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://x..y/"}
 {"PATH":"/","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://.x.y/"}
+{"PATH":"////","host":"none","METHOD":"GET","VERSION":"HTTP/1.1","URI":"////"}
 {"PATH":"/foobar","host":"none","METHOD":"OPTIONS","VERSION":"HTTP/1.1","URI":"/foobar"}
+{"PATH":"/","range":"bytes=1-2","host":"default","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/README","accept":"foo/bar","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/README"}
+{"PATH":"/","accept-encoding":"gzip;q=0, identity;q=0","host":"x","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/index.html","host":"www.foo.example.com..","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/index.html"}
+{"PATH":"/foobar","host":"default","METHOD":"OPTIONS","VERSION":"HTTP/1.1","URI":"/foobar"}
 {"PATH":"/index.html","host":"www.foo.example.com..:80","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/index.html"}
+{"PATH":"/index.html","host":"www.foo.example.com..:1234","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/index.html"}
 {"PATH":"/","accept-encoding":"gzip","host":"default","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
+{"PATH":"/.*","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/.*"}
 {"PATH":"/.400","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/.400"}
 {"PATH":"/.404","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/.404"}
 {"PATH":"/.410","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/.410"}
 {"PATH":"/.500","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/.500"}
 {"PATH":"/.503","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/.503"}
 {"PATH":"/.999","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/.999"}
+{"PATH":"/","connection":"close","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://:/noprivs.html"}
 {"PATH":"/","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://defaulT/bin","FRAGMENT":"blah"}
-{"PATH":"/","host":"","METHOD":"EAD","VERSION":"HTTP/1.1","URI":"http://default/README"}
+{"PATH":"/","host":"","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"http://default/README"}
+{"PATH":"/","accept":"","host":"","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","host":"notcorrect","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
-{"PATH":"/","host":"default","METHOD":"PTIONS","VERSION":"HTTP/1.1","URI":"*"}
+{"PATH":"/","range":"bytes = -2","connection":"ranGe, AccEpt, keep-aLive, accept-language","accept":"foo/bar","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","host":"default","METHOD":"OPTIONS","VERSION":"HTTP/1.1","URI":"*"}
+{"PATH":"/test","if-unmodified-since":"Sunday, 10-Oct-04 07:02:24 GMT","duplicate":["VAL1","VAL2","VAL3"],"if-modified-since":"Tue, 17 Aug 10 03:21:45 +0000","host":"foo.example.com:1234","comment-date-rfc1123":"Sun, 10 Oct 2004 07:02:24 GMT","comment-tst":"Test different date formats...","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/test?howdy=yes","QUERY":"howdy=yes"}
+{"PATH":"/empty","host":"foo.example.com","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/empty"}
+{"PATH":"/","accept":"text/*;q=1.0","METHOD":"GET","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","cookie":["foo=bar","test=yes; go=no"],"METHOD":"GET","VERSION":"HTTP/1.0","URI":"/"}
 {"PATH":"/","accept-encoding":"gzip","host":"","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"http://default/"}
-{"PATH":"/","connection":"close","host":"","METHOD":"AD","VERSION":"HTTP/1.1","URI":"http://foo.example.com:1234/bt.torrent"}
+{"PATH":"/corner/","host":"foo.example.com","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/corner/"}
+{"PATH":"/","connection":"close","host":"","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"http://foo.example.com:1234/bt.torrent"}
+{"PATH":"<policy-file-request","METHOD":"XML"}
 {"PATH":"/","host":"localhost","METHOD":"GET","VERSION":"HTTP/1.1","URI":"http://localhost:8080/iesucks"}

@@ -27,6 +27,7 @@
       (loop for item = (read s nil done)
             until (eq item done)
             for titem = (tnetstring::parse-tnetstream tnet)
+            do (peek-char t tnet nil)
             sum (if (a-test item titem) 1 0) into passed
             sum 1 into total
             finally (format t "~D of ~D tests passed~&" passed total))))))
@@ -68,13 +69,18 @@
                   do (tnetstring:parse-tnetstring item))))))
 
 (defun benchmark-json-decode (iters)
-  (let ((tests (with-open-file (j "tests/json.txt")
-                 (let ((done (gensym)))
-                   (loop for item = (read-line j nil done)
-                         until (eq item done)
-                         collect item)))))
-    (time (dotimes (_ iters)
-            (loop for item in tests do (json:decode-json-from-string item))))))
+  (let ((json:*json-identifier-name-to-lisp* (lambda (x) x))
+        (json:*lisp-identifier-name-to-json* (lambda (x) x)))
+    (let ((tests (with-open-file (j "tests/json.txt")
+                   (let ((done (gensym)))
+                     (loop for item = (read-line j nil done)
+                           until (eq item done)
+                           collect item)))))
+      (time (dotimes (_ iters)
+              (loop for item in tests do (json:decode-json-from-string item)))))))
 
+(test-tnet-decode)
+(test-tnet-encode-decode)
+(benchmark-encode 1000)
 (benchmark-decode 1000)
 (benchmark-json-decode 1000)
