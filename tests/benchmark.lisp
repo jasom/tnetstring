@@ -25,9 +25,9 @@
   (with-open-file (tnet "tests/tnets.txt")
     (let ((done (gensym)))
       (loop for item = (read s nil done)
+            for titem = (when (not (eq item done))
+                         (tnetstring:parse-tnetstring (read-line tnet)))
             until (eq item done)
-            for titem = (tnetstring::parse-tnetstream tnet)
-            do (peek-char t tnet nil)
             sum (if (a-test item titem) 1 0) into passed
             sum 1 into total
             finally (format t "~D of ~D tests passed~&" passed total))))))
