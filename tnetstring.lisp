@@ -49,7 +49,7 @@ Defaults to the identity")
 (defconstant +key-package+ (find-package :keyword)
   "Package to intern dictionary keys in")
 
-(declaim (optimize (speed 3) (safety 0)))
+(declaim (optimize (speed 3) ))
 
 (defstruct (fake-string-stream (:conc-name fss-))
   (data "" :type simple-string)
@@ -122,13 +122,15 @@ Defaults to the identity")
       (fss-read-char stream)
       returnme)))
 
-(defun parse-tnetstring (string &optional (start 0) (length (- (length string) start)))
-  (declare (type simple-string string))
+;TODO actually test the start & length arguments
+(defun parse-tnetstring (string &optional (start 0) (end (length string)))
+  (declare (type simple-string string)
+	   (type fixnum start end))
   "Parses a string as a tnetstring.  Behavior is undefined if 
    the string is not a valid tnetstring"
-  (let ((fake-stream (make-fake-string-stream :data string :length length
+  (let ((fake-stream (make-fake-string-stream :data string :length end
 					      :pos (1- start))))
-	  (values (parse-tnetstream fake-stream))))
+	  (values (parse-tnetstream fake-stream) (1+ (fss-pos fake-stream)))))
 
 
 (defmacro with-partial-file ((stream length) &body b)
