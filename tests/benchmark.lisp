@@ -1,17 +1,25 @@
 (ql:quickload :tnetstring)
 (ql:quickload :cl-json)
+
 (defun compare-alists (a b)
-  (and (equal (length a) (length b))
+  (and (= (length a) (length b))
        (every (lambda (item) 
              (equalp item (assoc (car item) b))) a)))
 
+(defun compare-alist-hash (al ht)
+  (and (= (length al) (hash-table-count ht))
+       (every (lambda (item)
+                (equalp (cdr item) (gethash (car item) ht))) al)))
+
 (defun my-compare (a b)
   (or (equalp a b)
-          (and (consp a) (consp b)
-               (consp (car a)) (consp (car b))
-               (keywordp (caar a))
-               (keywordp (caar b))
-               (compare-alists a b))))
+      (and (consp a) (consp b)
+           (consp (car a)) (consp (car b))
+           (keywordp (caar a))
+           (keywordp (caar b))
+           (compare-alists a b))
+      (and (consp a) (hash-table-p b)
+           (compare-alist-hash a b))))
 
 (defun a-test (a b)
   (if (my-compare a b)
@@ -30,7 +38,9 @@
             until (eq item done)
             sum (if (a-test item titem) 1 0) into passed
             sum 1 into total
-            finally (format t "~D of ~D tests passed~&" passed total))))))
+            finally (progn
+                      (format t "~D of ~D tests passed~&" passed total)
+                      (return (values passed total))))))))
 
 (defun test-tnet-encode-decode ()
   (let ((tests
@@ -43,7 +53,9 @@
                                  (tnetstring:dump-tnetstring item)))
                 1 0) into passed
           sum 1 into total
-          finally (format t "~D of ~D tests passed~&" passed total))))
+          finally (progn
+                    (format t "~D of ~D tests passed~&" passed total)
+                    (return (values passed total))))))
 
 (defun benchmark-encode (iters)
   (let ((tests (with-open-file (s "tests/srecs.txt")
@@ -79,8 +91,25 @@
       (time (dotimes (_ iters)
               (loop for item in tests do (json:decode-json-from-string item)))))))
 
-(test-tnet-decode)
-(test-tnet-encode-decode)
+(defmacro run-tests (form)
+  `(multiple-value-bind (a b) ,form
+    (setq passed (+ passed a))
+    (setq total (+ total b))))
+
+(let ((passed 0)
+      (total 0)
+      (a) (b))
+  (run-tests (test-tnet-decode))
+  (run-tests (test-tnet-encode-decode))
+
+  (let ((tnetstring:*dict-decode-type* :hash-table))
+    (run-tests (test-tnet-decode))
+    (run-tests (test-tnet-encode-decode)))
+  (format t "~&~A of ~A tests passed~&" passed total))
+ 
 (benchmark-encode 1000)
 (benchmark-decode 1000)
+(let ((tnetstring:*dict-decode-type* :hash-table))
+(benchmark-encode 1000)
+(benchmark-decode 1000))
 (benchmark-json-decode 1000)
