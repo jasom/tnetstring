@@ -19,9 +19,13 @@
 {"PATH":"/","host":"foo.EXAMPLE.Com","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","accept":"text/*, text/html;q=0","host":"foo.EXAMPLE.Com","METHOD":"GET","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","host":"foo.exAMPLE.COM","if-none-match":["\"f.e.c/1\"","\"f.e.c/2\"","\"f.e.c/3\"","\"f.e.c/4\""],"METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","host":"foo.exAMPLE.COM","if-none-match":["\"f.e.c/1\"","\"f.e.c/2\"","\"f.e.c/3\"","\"f.e.c/4\""],"METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","host":"foo.exAMPLE.COM","if-none-match":["\"f.e.c/1\"","\"f.e.c/2\"","\"f.e.c/3\"","\"f.e.c/4\""],"METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","connection":"keep-alive","METHOD":"HEAD","VERSION":"HTTP/1.0","URI":"/"}
+{"PATH":"/","host":"foo.exAMPLE.COM","if-none-match":["\"f.e.c/1\"","\"f.e.c/2\"","\"f.e.c/3\"","\"f.e.c/4\""],"METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","host":".","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","host":".","METHOD":"HEAD","VERSION":"HTTP/1.1","URI":"/"}
 {"PATH":"/","host":"abcd","METHOD":"BLAH","VERSION":"HTTP/1.1","URI":"/"}

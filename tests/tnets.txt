@@ -19,9 +19,13 @@
 83:6:METHOD,3:GET,3:URI,1:/,7:VERSION,8:HTTP/1.1,4:PATH,1:/,4:host,15:foo.EXAMPLE.Com,}
 117:6:METHOD,3:GET,3:URI,1:/,7:VERSION,8:HTTP/1.1,4:PATH,1:/,4:host,15:foo.EXAMPLE.Com,6:accept,21:text/*, text/html;q=0,}
 86:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.0,4:PATH,1:/,10:connection,10:keep-alive,}
+153:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.1,4:PATH,1:/,13:if-none-match,48:9:"f.e.c/1",9:"f.e.c/2",9:"f.e.c/3",9:"f.e.c/4",]4:host,15:foo.exAMPLE.COM,}
 86:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.0,4:PATH,1:/,10:connection,10:keep-alive,}
+153:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.1,4:PATH,1:/,13:if-none-match,48:9:"f.e.c/1",9:"f.e.c/2",9:"f.e.c/3",9:"f.e.c/4",]4:host,15:foo.exAMPLE.COM,}
 86:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.0,4:PATH,1:/,10:connection,10:keep-alive,}
+153:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.1,4:PATH,1:/,13:if-none-match,48:9:"f.e.c/1",9:"f.e.c/2",9:"f.e.c/3",9:"f.e.c/4",]4:host,15:foo.exAMPLE.COM,}
 86:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.0,4:PATH,1:/,10:connection,10:keep-alive,}
+153:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.1,4:PATH,1:/,13:if-none-match,48:9:"f.e.c/1",9:"f.e.c/2",9:"f.e.c/3",9:"f.e.c/4",]4:host,15:foo.exAMPLE.COM,}
 69:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.1,4:PATH,1:/,4:host,1:.,}
 69:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.1,4:PATH,1:/,4:host,1:.,}
 72:6:METHOD,4:BLAH,3:URI,1:/,7:VERSION,8:HTTP/1.1,4:PATH,1:/,4:host,4:abcd,}
