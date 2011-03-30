@@ -122,11 +122,12 @@ Defaults to the identity")
       (fss-read-char stream)
       returnme)))
 
-(defun parse-tnetstring (string)
+(defun parse-tnetstring (string &optional (start 0) (length (length string)))
   (declare (type simple-string string))
   "Parses a string as a tnetstring.  Behavior is undefined if 
    the string is not a valid tnetstring"
-  (let ((fake-stream (make-fake-string-stream :data string :length (length string))))
+  (let ((fake-stream (make-fake-string-stream :data string :length length
+					      :pos (1- start))))
 	  (values (parse-tnetstream fake-stream))))
 
 
