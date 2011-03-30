@@ -82,7 +82,7 @@
 79:6:METHOD,4:HEAD,3:URI,1:/,7:VERSION,8:HTTP/1.1,4:PATH,1:/,4:host,10:notcorrect,}
 158:6:METHOD,3:GET,3:URI,1:/,7:VERSION,8:HTTP/1.0,4:PATH,1:/,6:accept,7:foo/bar,10:connection,42:ranGe, AccEpt, keep-aLive, accept-language,5:range,10:bytes = -2,}
 78:6:METHOD,7:OPTIONS,3:URI,1:*,7:VERSION,8:HTTP/1.1,4:PATH,1:/,4:host,7:default,}
-361:6:METHOD,3:GET,3:URI,15:/test?howdy=yes,7:VERSION,8:HTTP/1.1,4:PATH,5:/test,11:comment-tst,30:Test different date formats...,20:comment-date-rfc1123,29:Sun, 10 Oct 2004 07:02:24 GMT,4:host,20:foo.example.com:1234,17:if-modified-since,29:Tue, 17 Aug 10 03:21:45 +0000,9:duplicate,21:4:VAL1,4:VAL2,4:VAL3,]19:if-unmodified-since,30:Sunday, 10-Oct-04 07:02:24 GMT,}
+381:6:METHOD,3:GET,5:QUERY,9:howdy=yes,3:URI,15:/test?howdy=yes,7:VERSION,8:HTTP/1.1,4:PATH,5:/test,11:comment-tst,30:Test different date formats...,20:comment-date-rfc1123,29:Sun, 10 Oct 2004 07:02:24 GMT,4:host,20:foo.example.com:1234,17:if-modified-since,29:Tue, 17 Aug 10 03:21:45 +0000,9:duplicate,21:4:VAL1,4:VAL2,4:VAL3,]19:if-unmodified-since,30:Sunday, 10-Oct-04 07:02:24 GMT,}
 93:6:METHOD,3:GET,3:URI,6:/empty,7:VERSION,8:HTTP/1.1,4:PATH,6:/empty,4:host,15:foo.example.com,}
 82:6:METHOD,3:GET,3:URI,1:/,7:VERSION,8:HTTP/1.0,4:PATH,1:/,6:accept,12:text/*;q=1.0,}
 99:6:METHOD,3:GET,3:URI,1:/,7:VERSION,8:HTTP/1.0,4:PATH,1:/,6:cookie,29:7:foo=bar,15:test=yes; go=no,]}
