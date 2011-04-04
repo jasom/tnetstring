@@ -52,9 +52,10 @@ Defaults to the identity")
 (declaim (optimize (speed 3) ))
 
 (defstruct (fake-string-stream (:conc-name fss-))
-  (data "" :type simple-string)
+  (data "" :type (or simple-string (simple-array (unsigned-byte 8) (*))))
   (pos -1 :type fixnum)
   (length 0 :type fixnum))
+
 
 (defun fss-read-char (fake-stream)
   (declare (type fake-string-stream fake-stream))
