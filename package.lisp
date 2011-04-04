@@ -3,6 +3,7 @@
 (defpackage #:tnetstring
   (:use #:cl)
   (:export :parse-tnetstring
+           :parse-tnetbytes
            :dump-tnetstring
 	   :*dict-decode-type*
 	   :*false*

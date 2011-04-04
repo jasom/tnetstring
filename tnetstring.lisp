@@ -81,17 +81,21 @@ Defaults to the identity")
 
 (defun make-keyword (key)
   (declare (values symbol))
-  (intern (if *translate-read-key*
+  (let ((key (if (not (typep key 'string))
+		 (map 'string #'code-char key)
+		 key)))
+		      (intern (if *translate-read-key*
 	      (funcall *translate-read-key* key)
 	      key)
-	  +key-package+))
+	  +key-package+)))
 
 (defun get-ns-length (fake-stream)
   (loop
      with total fixnum = 0
-     for c = (fss-read-char fake-stream)
-     when (eq c #\:) return total
-       do (setq total (+ (- (char-code c) (char-code #\0)) (the fixnum (* total 10)))))) 
+     for a = (fss-read-char fake-stream)
+     for c = (if (typep a 'character) (char-code a) a)
+     when (eq c (char-code #\:)) return total
+       do (setq total (+ (- c (char-code #\0)) (the fixnum (* total 10)))))) 
 
 (defun parse-payload (stream)
 	(declare (type fake-string-stream stream))
@@ -101,24 +105,32 @@ Defaults to the identity")
 	  (declare (type fixnum length))
 	  (values length payload-type)))
 
+(declaim (inline alloc-string))
+
+(defun alloc-string (marker length)
+  (if (typep marker 'character)
+      (make-string length)
+      (make-array (list length) :element-type '(unsigned-byte 8))))
+
 (defun parse-tnetstream (stream)
   (multiple-value-bind (length payload-type) (parse-payload stream)
     (let ((returnme
 	   (ecase payload-type
-	     (#\, (let ((str (make-string length)))
-		    (fss-read-sequence str stream)
-		    str))
-	     (#\# (let ((str (make-string length)))
-		    (fss-read-sequence str stream)
-		    (parse-integer str)))
-	     (#\} (if (eq *dict-decode-type* :alist)
-		      (parse-dict-to-alist stream length)
-		      (parse-dict stream length)))
-	     (#\] (parse-list stream length))
-	     (#\! (progn
-		    (fss-consume stream length)
-		    (= length 4)))
-	     (#\~ nil)
+	     ((#\, 44)
+	      (let ((str (alloc-string payload-type length)))
+		(fss-read-sequence str stream)
+		str))
+	     ((#\# 35) (let ((str (alloc-string length)))
+			 (fss-read-sequence str stream)
+			 (parse-integer str)))
+	     ((#\} 125) (if (eq *dict-decode-type* :alist)
+			    (parse-dict-to-alist stream length)
+			    (parse-dict stream length)))
+	     ((#\] 93) (parse-list stream length))
+	     ((#\! 33) (progn
+			 (fss-consume stream length)
+			 (= length 4)))
+	     ((#\~ 126) nil)
 	     )))
       (fss-read-char stream)
       returnme)))
@@ -133,6 +145,14 @@ Defaults to the identity")
 					      :pos (1- start))))
 	  (values (parse-tnetstream fake-stream) (1+ (fss-pos fake-stream)))))
 
+(defun parse-tnetbytes (string &optional (start 0) (end (length string)))
+  (declare (type (simple-array (unsigned-byte 8) (*)) string)
+	   (type fixnum start end))
+  "Parses a string as a tnetstring.  Behavior is undefined if 
+   the string is not a valid tnetstring"
+  (let ((fake-stream (make-fake-string-stream :data string :length end
+					      :pos (1- start))))
+	  (values (parse-tnetstream fake-stream) (1+ (fss-pos fake-stream)))))
 
 (defmacro with-partial-file ((stream length) &body b)
   (let ((end (gensym)))

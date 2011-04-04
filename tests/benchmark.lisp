@@ -4,12 +4,12 @@
 (defun compare-alists (a b)
   (and (= (length a) (length b))
        (every (lambda (item) 
-             (equalp item (assoc (car item) b))) a)))
+             (my-compare (cdr item) (cdr (assoc (car item) b)))) a)))
 
 (defun compare-alist-hash (al ht)
   (and (= (length al) (hash-table-count ht))
        (every (lambda (item)
-                (equalp (cdr item) (gethash (car item) ht))) al)))
+                (my-compare (cdr item) (gethash (car item) ht))) al)))
 
 (defun my-compare (a b)
   (or (equalp a b)
@@ -19,7 +19,12 @@
            (keywordp (caar b))
            (compare-alists a b))
       (and (consp a) (hash-table-p b)
-           (compare-alist-hash a b))))
+           (compare-alist-hash a b))
+      (and (consp a) (consp b)
+           (every (lambda (x) (my-compare (car x) (cdr x)))
+                  (pairlis a b)))
+      (and (stringp a) (vectorp b)
+           (string= a (map 'string #'code-char b)))))
 
 (defun a-test (a b)
   (if (my-compare a b)
@@ -28,13 +33,16 @@
            (print a)
            (print b) nil)))
 
-(defun test-tnet-decode ()
+(defun test-tnet-decode (&optional bytes)
   (with-open-file (s "tests/srecs.txt")
   (with-open-file (tnet "tests/tnets.txt")
     (let ((done (gensym)))
       (loop for item = (read s nil done)
             for titem = (when (not (eq item done))
-                         (tnetstring:parse-tnetstring (read-line tnet)))
+                         (if bytes
+                           (tnetstring:parse-tnetbytes
+                             (map '(simple-array (unsigned-byte 8) (*)) #'char-code (read-line tnet)))
+                           (tnetstring:parse-tnetstring (read-line tnet))))
             until (eq item done)
             sum (if (a-test item titem) 1 0) into passed
             sum 1 into total
@@ -67,20 +75,30 @@
     (time (dotimes (_ iters) (loop for item in tests
                                    do (tnetstring:dump-tnetstring item))))))
 
-(defun benchmark-decode (iters)
+(defun benchmark-decode (iters &optional bytes)
   (let* ((tests (with-open-file (s "tests/srecs.txt")
                   (let ((done (gensym)))
                     (loop for item = (read s nil done)
                           until (eq item done)
                           collect item)))
                 )
-         (test-strings (mapcar #'tnetstring:dump-tnetstring tests)))
+         (test-strings (mapcar #'tnetstring:dump-tnetstring tests))
+         (test-strings (if bytes
+                         (mapcar
+                           (lambda (x)
+                             (map 
+                               '(simple-array (unsigned-byte 8) (*))
+                               #'char-code x))
+                           test-strings)
+                         test-strings)))
     ;(print test-strings)
     (time (dotimes (_ iters)
             (loop for item in test-strings
-                  do (tnetstring:parse-tnetstring item))))))
+                  do (if bytes
+                       (tnetstring:parse-tnetbytes item)
+                       (tnetstring:parse-tnetstring item)))))))
 
-(defun benchmark-json-decode (iters)
+(defun benchmark-json-decode (iters )
   (let ((json:*json-identifier-name-to-lisp* (lambda (x) x))
         (json:*lisp-identifier-name-to-json* (lambda (x) x)))
     (let ((tests (with-open-file (j "tests/json.txt")
@@ -100,6 +118,7 @@
       (total 0)
       (a) (b))
   (run-tests (test-tnet-decode))
+  (run-tests (test-tnet-decode t))
   (run-tests (test-tnet-encode-decode))
 
   (let ((tnetstring:*dict-decode-type* :hash-table))
@@ -111,6 +130,8 @@
 (benchmark-encode 1000)
 (format t "~&TNET decode~&")
 (benchmark-decode 1000)
+(format t "~&TNET decode (bytes)~&")
+(benchmark-decode 1000 t)
 (format t "~&TNET decode (hash-table dictionaries)~&")
 (let ((tnetstring:*dict-decode-type* :hash-table))
   (benchmark-decode 1000))
