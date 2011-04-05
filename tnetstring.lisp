@@ -79,10 +79,19 @@ Defaults to the identity")
     (setf (aref seq i) (fss-read-char str)))))
 
 
+(defun dumb-convert (v)
+  (declare (optimize (speed 3))
+	   (type (simple-array (unsigned-byte 8) (*)) v))
+  "This is a dumb way to convert a byte-vector to a string.
+However, it is 100% reversible, so you can re-encode correctly if needed"
+  (let ((s (make-string (length v))))
+    (dotimes (i (length v))
+      (setf (aref s i) (code-char (aref v i)))) s))
+
 (defun make-keyword (key)
   (declare (values symbol))
   (let ((key (if (not (typep key 'string))
-		 (map 'string #'code-char key)
+		 (dumb-convert key)
 		 key)))
 		      (intern (if *translate-read-key*
 	      (funcall *translate-read-key* key)
