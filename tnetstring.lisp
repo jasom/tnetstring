@@ -322,9 +322,7 @@ then outputs to a string.  Otherwise outputs to stream"
   (list (list "0:}" nil)
         (list "0:]" nil)
         (list "51:5:hello,39:11:12345678901#4:this,4:true!0:~4:,]}" 
-              (let ((x (make-hash-table)))
-                (setf (gethash :hello x) (list 12345678901 "this" t nil ""))
-                x))
+	      '((:|hello| 12345678901 "this" t nil "")))
         (list "5:12345#" 012345)
         (list "12:this is cool," "this is cool")
         (list "0:," "")
