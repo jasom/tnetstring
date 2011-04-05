@@ -319,7 +319,7 @@ then outputs to a string.  Otherwise outputs to stream"
 
 
 (defparameter *tests* 
-  (list (list "0:}" (make-hash-table))
+  (list (list "0:}" nil)
         (list "0:]" nil)
         (list "51:5:hello,39:11:12345678901#4:this,4:true!0:~4:,]}" 
               (let ((x (make-hash-table)))
@@ -346,7 +346,6 @@ then outputs to a string.  Otherwise outputs to stream"
   (loop for (data expect) in *tests*
      do (let ((payload (parse-tnetstring data)))
 	  (assert (or payload (null expect)))
-
 	  (format t "~&~A~&" (equalp payload expect))
 	  (format t "EXPECT: ~A GOT: ~A"
 		  (myshow expect)
