@@ -71,9 +71,11 @@ Defaults to the identity")
   (aref (fss-data fake-stream) (+ (fss-pos fake-stream) offset 1)))
 
 (defun fss-consume (fake-stream count)
+  (declare (type fixnum count))
   (setf (fss-pos fake-stream) (+ count (fss-pos fake-stream))))
 
 (defun fss-read-sequence (seq str)
+  (declare (type array seq))
   (let ((l (length seq)))
   (dotimes (i l)
     (setf (aref seq i) (fss-read-char str)))))
@@ -129,7 +131,7 @@ However, it is 100% reversible, so you can re-encode correctly if needed"
 	      (let ((str (alloc-string payload-type length)))
 		(fss-read-sequence str stream)
 		str))
-	     ((#\# 35) (let ((str (alloc-string length)))
+	     ((#\# 35) (let ((str (alloc-string payload-type length)))
 			 (fss-read-sequence str stream)
 			 (parse-integer str)))
 	     ((#\} 125) (if (eq *dict-decode-type* :alist)
@@ -214,8 +216,6 @@ then outputs to a string.  Otherwise outputs to stream"
       (with-output-to-string (s)
 	(dump-tnetstring-internal data s))
       (dump-tnetstring-internal data stream)))
-
-(defun digit-to-char (x) (code-char (+ (char-code #\0) x)))
 
 (let ((length-print (pprint-dispatch most-positive-fixnum)))
 (defun output-netstring (data identifier  stream)
