@@ -2,6 +2,7 @@
 ;;;; Copyright (c) 2011 Jason Miller
 
 (in-package #:tnetstring)
+(declaim (optimize (speed 3) ))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (when (with-input-from-string (s "hello") (file-position s 2))
@@ -49,7 +50,6 @@ Defaults to the identity")
 (defconstant +key-package+ (find-package :keyword)
   "Package to intern dictionary keys in")
 
-(declaim (optimize (speed 3) ))
 
 (defstruct (fake-string-stream (:conc-name fss-))
   (data "" :type (or simple-string (simple-array (unsigned-byte 8) (*))))
