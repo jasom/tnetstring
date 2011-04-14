@@ -85,7 +85,8 @@ Defaults to the identity")
   (declare (optimize (speed 3))
 	   (type (simple-array (unsigned-byte 8) (*)) v))
   "This is a dumb way to convert a byte-vector to a string.
-However, it is 100% reversible, so you can re-encode correctly if needed"
+However, it is 100% reversible, so you can re-encode correctly if needed.
+Also it is significantly faster than (map 'string #code-char v) on sbcl"
   (let ((s (make-string (length v))))
     (dotimes (i (length v))
       (setf (aref s i) (code-char (aref v i)))) s))
@@ -133,7 +134,9 @@ However, it is 100% reversible, so you can re-encode correctly if needed"
 		str))
 	     ((#\# 35) (let ((str (alloc-string payload-type length)))
 			 (fss-read-sequence str stream)
-			 (parse-integer str)))
+             (if (typep payload-type 'character)
+               (parse-integer str)
+               (parse-integer (dumb-convert str)))))
 	     ((#\} 125) (if (eq *dict-decode-type* :alist)
 			    (parse-dict-to-alist stream length)
 			    (parse-dict stream length)))
