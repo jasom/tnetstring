@@ -4,10 +4,6 @@
 (in-package #:tnetstring)
 (declaim (optimize (speed 3) ))
 
-(eval-when (:compile-toplevel :load-toplevel :execute)
-  (when (with-input-from-string (s "hello") (file-position s 2))
-    (push :string-seek *features*)))
-
 (defparameter *dict-decode-type* :alist
   "What to encode tnetstring 'dictionaries' into.
    Valid values are :alist and :hash-table")
@@ -32,11 +28,12 @@
 (defparameter *nil-encode* "0:~"
   "What nil should encode as")
 
-(defparameter *decode-table* nil
-  "An alist of symbols that should decode to particular netstrings.
+(defparameter *encode-table* '((false . "5:false!")
+			       (null . "0:~")
+			       (empty . "0:]"))
+  "An alist of symbols that should decode to particular netstrings.")
 
-For example, if you set *false* to decode to tnetstring::false, then you might
-add (tnetstring::false . \"5:false!\") to this list")
+
 
 (defparameter *translate-read-key* nil
   "Function to translate names of keys when reading dictionaries.
@@ -124,6 +121,13 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
       (make-string length)
       (make-array (list length) :element-type '(unsigned-byte 8))))
 
+(defun parse-float (string)
+  (let ((*read-eval* nil) (*read-default-float-format* nil))
+    (multiple-value-bind (v l) (read-from-string string)
+      (unless (and (typep v 'float) (= l (length string)))
+	(error 'parse-error))
+      v)))
+
 (defun parse-tnetstream (stream)
   (multiple-value-bind (length payload-type) (parse-payload stream)
     (let ((returnme
@@ -134,9 +138,9 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
 		str))
 	     ((#\# 35) (let ((str (alloc-string payload-type length)))
 			 (fss-read-sequence str stream)
-             (if (typep payload-type 'character)
-               (parse-integer str)
-               (parse-integer (dumb-convert str)))))
+			 (if (typep payload-type 'character)
+			     (parse-integer str)
+			     (parse-integer (dumb-convert str)))))
 	     ((#\} 125) (if (eq *dict-decode-type* :alist)
 			    (parse-dict-to-alist stream length)
 			    (parse-dict stream length)))
@@ -144,6 +148,11 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
 	     ((#\! 33) (progn
 			 (fss-consume stream length)
 			 (= length 4)))
+	     ((#\^ 94) (let ((str (alloc-string payload-type length)))
+			 (fss-read-sequence str stream)
+			 (if (typep payload-type 'character)
+			     (parse-float str)
+			     (parse-float (dumb-convert str)))))
 	     ((#\~ 126) nil)
 	     )))
       (fss-read-char stream)
@@ -262,6 +271,9 @@ then outputs to a string.  Otherwise outputs to stream"
    (with-output-to-string (s)
      (loop for k being the hash-key of h
 	for v being the hash-value of h
+	  when (not (typep k '(or string symbol)))
+	    do (error 'type-error :expected-type '(or string symbol)
+		   :datum k)
 	do (dump-tnetstring-internal k s)
 	do (dump-tnetstring-internal v s)))
    #\} stream))
@@ -272,6 +284,10 @@ then outputs to a string.  Otherwise outputs to stream"
   (output-netstring
    (with-output-to-string (s)
      (loop for pair in alist
+	  for k = (car pair)
+	  when (not (typep k '(or string symbol)))
+	do (error 'type-error :expected-type '(or string symbol)
+		   :datum k)
 	do (dump-tnetstring-internal (car pair) s)
 	do (dump-tnetstring-internal (cdr pair) s)))
    #\} stream))
@@ -290,9 +306,9 @@ then outputs to a string.  Otherwise outputs to stream"
   (declare (type symbol s)
 	   (type stream stream))
   (if (and
-       (not (null *decode-table*))
-       (assoc s *decode-table*))
-      (let ((x (cdr (assoc s *decode-table*))))
+       (not (null *encode-table*))
+       (assoc s *encode-table*))
+      (let ((x (cdr (assoc s *encode-table*))))
 	(write-sequence (cdr x) stream))
       (output-netstring (if *translate-write-symbol*
 			    (funcall *translate-write-symbol* (symbol-name s))
@@ -318,7 +334,9 @@ then outputs to a string.  Otherwise outputs to stream"
      (write-sequence "4:true!" stream))
     ((typep data 'symbol)
      (dump-tnetstring-symbol data stream))
-    (t (assert nil))))
+    (t 
+     (error 'type-error :expected-type
+	    '(or string integer hash-table null list symbol)))))
 
 
 (defparameter *tests* 
