@@ -122,7 +122,7 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
       (make-array (list length) :element-type '(unsigned-byte 8))))
 
 (defun parse-float (string)
-  (let ((*read-eval* nil) (*read-default-float-format* nil))
+  (let ((*read-eval* nil) (*read-default-float-format* 'double-float))
     (multiple-value-bind (v l) (read-from-string string)
       (unless (and (typep v 'float) (= l (length string)))
 	(error 'parse-error))
