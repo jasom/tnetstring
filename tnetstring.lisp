@@ -315,6 +315,11 @@ then outputs to a string.  Otherwise outputs to stream"
 			    (symbol-name s))
 			#\, stream)))
 
+(defun dump-tnetstring-float (f stream)
+  (let ((f (float f 1d0))
+	(*read-default-float-format* 'double-float))
+    (output-netstring (format nil "~,6F" f) #\^ stream)))
+
 (defun dump-tnetstring-internal (data stream)
   (declare (type stream stream))
   (cond
@@ -334,6 +339,8 @@ then outputs to a string.  Otherwise outputs to stream"
      (write-sequence "4:true!" stream))
     ((typep data 'symbol)
      (dump-tnetstring-symbol data stream))
+    ((typep data 'float)
+     (dump-tnetstring-float data stream))
     (t 
      (error 'type-error :expected-type
 	    '(or string integer hash-table null list symbol)))))
