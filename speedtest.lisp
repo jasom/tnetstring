@@ -7,11 +7,12 @@
 
 (defun thrash-tnetstrings (count)
   (dotimes (i count)
-    (loop for (data expect) in tnetstring::*tests*
-	    do (let* ((payload (tnetstring:parse-tnetstring data))
-		   (again (tnetstring:dump-tnetstring payload))
-		   (back (tnetstring:parse-tnetstring again)))
-	      back))))
+    (loop
+       for (data expect) in tnetstring::*tests*
+       do (let* ((payload (tnetstring:parse-tnetstring data))
+                 #+nil(again (tnetstring:dump-tnetstring payload))
+                 #+nil(back (tnetstring:parse-tnetstring again)))
+            payload))))
 
 (defun thrash-json (count)
     (dotimes (i count)

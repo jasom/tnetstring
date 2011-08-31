@@ -14,7 +14,7 @@
 (defparameter *empty-list* nil
   "What to decode tnetstring empty-list into")
 
-(defparameter *null* nil
+(defparameter *null* :null
   "What to decode tnetstring null-object into")
 
 (defparameter *make-empty-dict* (lambda () (if (eq *dict-decode-type* :hash-table)
@@ -88,6 +88,7 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
     (dotimes (i (length v))
       (setf (aref s i) (code-char (aref v i)))) s))
 
+#+nil
 (defun make-keyword (key)
   (declare (values symbol))
   (let ((key (if (not (typep key 'string))
@@ -106,14 +107,6 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
      when (eq c (char-code #\:)) return total
      do (setq total (+ (- c (char-code #\0)) (the fixnum (* total 10)))))) 
 
-(defun parse-payload (stream)
-  (declare (type fake-string-stream stream))
-  (let* 
-      ((length (get-ns-length stream))
-       (payload-type (fss-read-offset stream length)))
-    (declare (type fixnum length))
-    (values length payload-type)))
-
 (declaim (inline alloc-string))
 
 (defun alloc-string (marker length)
@@ -121,105 +114,84 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
       (make-string length)
       (make-array (list length) :element-type '(unsigned-byte 8))))
 
-(defun parse-float (string)
-  (let ((*read-eval* nil) (*read-default-float-format* 'double-float))
-    (multiple-value-bind (v l) (read-from-string string)
-      (unless (and (typep v 'float) (= l (length string)))
-	(error 'parse-error))
-      v)))
+(defun read-integer (sequence start end)
+  (loop
+     for i from start below end
+     with result = 0
+     do (setf result
+              (+ (* result 10)
+                 (- (aref sequence i) (char-code #\0))))
+     finally (return result)))
 
-(defun parse-tnetstream (stream)
-  (multiple-value-bind (length payload-type) (parse-payload stream)
-    (let ((returnme
-	   (ecase payload-type
-	     ((#\, 44)
-	      (let ((str (alloc-string payload-type length)))
-		(fss-read-sequence str stream)
-		str))
-	     ((#\# 35) (let ((str (alloc-string payload-type length)))
-			 (fss-read-sequence str stream)
-			 (if (typep payload-type 'character)
-			     (parse-integer str)
-			     (parse-integer (dumb-convert str)))))
-	     ((#\} 125) (if (eq *dict-decode-type* :alist)
-			    (parse-dict-to-alist stream length)
-			    (parse-dict stream length)))
-	     ((#\] 93) (parse-list stream length))
-	     ((#\! 33) (progn
-			 (fss-consume stream length)
-			 (= length 4)))
-	     ((#\^ 94) (let ((str (alloc-string payload-type length)))
-			 (fss-read-sequence str stream)
-			 (if (typep payload-type 'character)
-			     (parse-float str)
-			     (parse-float (dumb-convert str)))))
-	     ((#\~ 126) nil)
-	     )))
-      (fss-read-char stream)
-      returnme)))
+(defun read-length (sequence start end)
+  (loop
+     for i from start below end
+     for b = (aref sequence i)
+     with length = 0
+     when (eq b (char-code #\:)) return (list length (1+ i))
+     do (setf length
+              (+ (* length 10)
+                 (- b (char-code #\0))))
+     finally (return (list nil nil))))
 
-;; TODO: actually test the start & length arguments
-(defun parse-tnetstring (string &optional (start 0) (end (length string)))
-  (declare (type simple-string string)
-	   (type fixnum start end))
-  "Parses a string as a tnetstring.  Behavior is undefined if 
-   the string is not a valid tnetstring"
-  (let ((fake-stream (make-fake-string-stream :data string :length end
-					      :pos (1- start))))
-    (values (parse-tnetstream fake-stream) (1+ (fss-pos fake-stream)))))
-
-(defun parse-tnetbytes (string &optional (start 0) (end (length string)))
-  (declare (type (simple-array (unsigned-byte 8) (*)) string)
-	   (type fixnum start end))
-  "Parses a string as a tnetstring.  Behavior is undefined if 
-   the string is not a valid tnetstring"
-  (let ((fake-stream (make-fake-string-stream :data string :length end
-					      :pos (1- start))))
-    (values (parse-tnetstream fake-stream) (1+ (fss-pos fake-stream)))))
+(defun parse-tnetstring (bytes &optional (start 0) (end (length bytes)))
+  (destructuring-bind (length start)
+      (read-length bytes start end)
+    (if (or (null length)
+            (> (+ start length) end))
+        'eof
+        (let* ((end (+ start length))
+               (next (1+ end))
+               (payload-type (aref bytes end)))
+          (let ((result
+                 (ecase payload-type
+                   ;; "string", which for tnetstrings is an uninterpreted
+                   ;; sequence of bytes
+                   (#.(char-code #\,)
+                      (make-array length :element-type '(unsigned-byte 8) :displaced-to bytes :displaced-index-offset start))
+                   ;; integer
+                   (#.(char-code #\#)
+                      (read-integer bytes start (+ start length)))
+                   ;; dictionary
+                   (#.(char-code #\})
+                      (let ((alist
+                             (let ((start start))
+                               (loop
+                                  for (key pos1) = (multiple-value-list (parse-tnetstring bytes start end))
+                                  until (eq key 'eof)
+                                  for (val pos2) = (multiple-value-list (parse-tnetstring bytes pos1 end))
+                                  do (setf start pos2)
+                                  collect (cons key val)))))
+                        (if (eq *dict-decode-type* :hash-table)
+                            (alist-hash-table alist)
+                            alist)))
+                   ;; list
+                   (#.(char-code #\])
+                      (or
+                       (let ((start start))
+                         (loop
+                            for (val pos) = (multiple-value-list (parse-tnetstring bytes start end))
+                            until (eq val 'eof)
+                            do (setf start pos)
+                            collect val))
+                       *empty-list*))
+                   ;; boolean
+                   (#.(char-code #\!)
+                      (or (equalp (subseq bytes start end) #.(string-to-octets "true"))
+                          *false*))
+                   ;; float
+                   (#.(char-code #\^)
+                      (read-from-string (octets-to-string (subseq bytes start end))))
+                   ;; null
+                   (#.(char-code #\~)
+                      *null*))))
+            (values result next))))))
 
 (defmacro with-partial-file ((stream length) &body b)
   (let ((end (gensym)))
     `(let ((,end (+ (fss-pos ,stream) ,length)))
        (flet ((eof-p () (>= (fss-pos ,stream) ,end)))
 	 ,@b))))
-
-(defun parse-list (stream length)
-  (declare (type fixnum length))
-  (if (= length 0)
-      *empty-list*
-      (with-partial-file (stream length)
-        (loop for value = (parse-tnetstream stream)
-           collect value
-           while (not (eof-p))))))
-
-(defun parse-pair (stream)
-  (let* ((key (parse-tnetstream stream))
-	 (value (parse-tnetstream stream)))
-    (values key value)))
-
-
-(defun parse-dict-to-alist (stream length)
-  (declare (type fixnum length)
-	   (type fake-string-stream stream))
-  (let ((new-hash nil))
-    (if (= length 0)
-	(funcall *make-empty-dict*)
-	(with-partial-file (stream length)
-	  (loop for (key value) = (multiple-value-list (parse-pair stream))
-	     do (push (cons (make-keyword key) value) new-hash) 
-	     when (eof-p) return (values new-hash))))))
-
-(defun parse-dict (stream length)
-  (declare (type fixnum length)
-	   (type fake-string-stream stream))
-  (let ((new-hash (make-hash-table)))
-    (if (= length 0)
-	(funcall *make-empty-dict*)
-	(with-partial-file (stream length)
-	  (loop for (key value) = (multiple-value-list (parse-pair stream))
-	     do (setf (gethash (make-keyword key) new-hash) value)
-	     when (eof-p) return (values new-hash))))))
-
 
 (defun dump-tnetstring (data &optional stream)
   "Serialize data to a tnetstring.  If stream is missing or nil,
@@ -347,18 +319,18 @@ then outputs to a string.  Otherwise outputs to stream"
 
 
 (defparameter *tests* 
-  (list (list "0:}" nil)
-        (list "0:]" nil)
-        (list "51:5:hello,39:11:12345678901#4:this,4:true!0:~4:,]}" 
-	      '((:|hello| 12345678901 "this" t nil "")))
-        (list "5:12345#" 012345)
-        (list "12:this is cool," "this is cool")
-        (list "0:," "")
-        (list "0:~" nil)
-        (list "4:true!" t)
-        (list "5:false!" nil)
-        (list "10:," "")
-        (list "24:5:12345#5:67890#5:xxxxx,]" (list 12345 67890 "xxxxx"))))
+  (list (list (string-to-octets "0:}") nil)
+        (list (string-to-octets "0:]") nil)
+        (list (string-to-octets "51:5:hello,39:11:12345678901#4:this,4:true!0:~4:,]}") 
+	      (list :|hello| 12345678901 (string-to-octets "this") t nil (string-to-octets "")))
+        (list (string-to-octets "5:12345#") 012345)
+        (list (string-to-octets "12:this is cool,") (string-to-octets "this is cool"))
+        (list (string-to-octets "0:,") (string-to-octets ""))
+        (list (string-to-octets "0:~") :null)
+        (list (string-to-octets "4:true!") t)
+        (list (string-to-octets "5:false!") nil)
+        (list (string-to-octets "10:,") (string-to-octets ""))
+        (list (string-to-octets "24:5:12345#5:67890#5:xxxxx,]") (list 12345 67890 (string-to-octets "xxxxx")))))
 
 (defun myshow (x)
   (if (typep x 'hash-table)
