@@ -2,51 +2,51 @@
 ;;;; All rights reserved.
 ;;;; This file is taken from cl-json which is under the following
 ;;;; license:
-;(This is the MIT / X Consortium license as taken from 
-; http://www.opensource.org/licenses/mit-license.html)
+;;;; (This is the MIT / X Consortium license as taken from 
+;;;;  http://www.opensource.org/licenses/mit-license.html)
 
-;Copyright (c) 2006-2008 Henrik Hjelte
-;Copyright (c) 2008 Hans HÃ¼bner (code from the program YASON)
-;
-;Permission is hereby granted, free of charge, to any person obtaining
-;a copy of this software and associated documentation files (the
-;"Software"), to deal in the Software without restriction, including
-;without limitation the rights to use, copy, modify, merge, publish,
-;distribute, sublicense, and/or sell copies of the Software, and to
-;permit persons to whom the Software is furnished to do so, subject to
-;the following conditions:
-;
-;The above copyright notice and this permission notice shall be
-;included in all copies or substantial portions of the Software.
-;
-;THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
-;EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-;MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
-;NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
-;LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
-;OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
-;WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+;;;;  Copyright (c) 2006-2008 Henrik Hjelte
+;;;;  Copyright (c) 2008 Hans HÃ¼bner (code from the program YASON)
+;;;;  
+;;;;  Permission is hereby granted, free of charge, to any person obtaining
+;;;;  a copy of this software and associated documentation files (the
+;;;;  "Software"), to deal in the Software without restriction, including
+;;;;  without limitation the rights to use, copy, modify, merge, publish,
+;;;;  distribute, sublicense, and/or sell copies of the Software, and to
+;;;;  permit persons to whom the Software is furnished to do so, subject to
+;;;;  the following conditions:
+;;;;  
+;;;;  The above copyright notice and this permission notice shall be
+;;;;  included in all copies or substantial portions of the Software.
+;;;;  
+;;;;  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+;;;;  EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+;;;;  MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+;;;;  NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+;;;;  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+;;;;  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+;;;;  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 (in-package :tnetstring)
 
 ;;; First a simpler version, see testcase json-object-simplified-camel-case
 ;;; for difference with the ordinary came-case-to-lisp
 (defun simplified-camel-case-to-lisp (camel-string)
- "Insert - between lowercase and uppercase chars.
+  "Insert - between lowercase and uppercase chars.
 Ignore _ + * and several consecutive uppercase."
- (declare (string camel-string))
- (let ((*print-pretty* nil))
-   (with-output-to-string (result)
-     (loop for c across camel-string
-           with last-was-lowercase
-           when (and last-was-lowercase
-                     (upper-case-p c))
-             do (princ "-" result)
-           if (lower-case-p c)
-             do (setf last-was-lowercase t)
-           else
-             do (setf last-was-lowercase nil)
-           do (princ (char-upcase c) result)))))
+  (declare (string camel-string))
+  (let ((*print-pretty* nil))
+    (with-output-to-string (result)
+      (loop for c across camel-string
+         with last-was-lowercase
+         when (and last-was-lowercase
+                   (upper-case-p c))
+         do (princ "-" result)
+         if (lower-case-p c)
+         do (setf last-was-lowercase t)
+         else
+         do (setf last-was-lowercase nil)
+         do (princ (char-upcase c) result)))))
 
 
 (defun camel-case-split (string)
@@ -66,7 +66,7 @@ STRING."
       (loop for i from 0 to length
          with cat = nil and b = nil
          if (= i length)
-           if (shift-part i nil) collect it end
+         if (shift-part i nil) collect it end
          else if (let ((c (aref string i)))
                    (cond
                      ((upper-case-p c)
@@ -84,7 +84,7 @@ STRING."
                       (if (not (eql cat :numeric))
                           (shift-part i :numeric)))
                      (t (shift-part i :punct))))
-           collect it))))
+         collect it))))
 
 (defun camel-case-transform-all-caps (parts
                                       &optional cat-before from-numeric)

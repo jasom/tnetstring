@@ -13,6 +13,4 @@
 	   :*nil-encode*
            :*decode-table*
            :*translate-read-key*
-           :*translate-write-symbol*
-	   ))
-
+           :*translate-write-symbol*))

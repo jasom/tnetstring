@@ -18,8 +18,8 @@
   "What to decode tnetstring null-object into")
 
 (defparameter *make-empty-dict* (lambda () (if (eq *dict-decode-type* :hash-table)
-					       (make-hash-table)
-					       nil))
+                                          (make-hash-table)
+                                          nil))
   "Function to create object when reading an empty-dictionary.
    Unlike *empty-list* this is a function, since a fresh, empty
    hash-table is something you might reasonably want (and is in fact
@@ -74,8 +74,8 @@ Defaults to the identity")
 (defun fss-read-sequence (seq str)
   (declare (type array seq))
   (let ((l (length seq)))
-  (dotimes (i l)
-    (setf (aref seq i) (fss-read-char str)))))
+    (dotimes (i l)
+      (setf (aref seq i) (fss-read-char str)))))
 
 
 (defun dumb-convert (v)
@@ -93,10 +93,10 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
   (let ((key (if (not (typep key 'string))
 		 (dumb-convert key)
 		 key)))
-		      (intern (if *translate-read-key*
-	      (funcall *translate-read-key* key)
-	      key)
-	  +key-package+)))
+    (intern (if *translate-read-key*
+                (funcall *translate-read-key* key)
+                key)
+            +key-package+)))
 
 (defun get-ns-length (fake-stream)
   (loop
@@ -104,15 +104,15 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
      for a = (fss-read-char fake-stream)
      for c = (if (typep a 'character) (char-code a) a)
      when (eq c (char-code #\:)) return total
-       do (setq total (+ (- c (char-code #\0)) (the fixnum (* total 10)))))) 
+     do (setq total (+ (- c (char-code #\0)) (the fixnum (* total 10)))))) 
 
 (defun parse-payload (stream)
-	(declare (type fake-string-stream stream))
-	(let* 
-	    ((length (get-ns-length stream))
-	     (payload-type (fss-read-offset stream length)))
-	  (declare (type fixnum length))
-	  (values length payload-type)))
+  (declare (type fake-string-stream stream))
+  (let* 
+      ((length (get-ns-length stream))
+       (payload-type (fss-read-offset stream length)))
+    (declare (type fixnum length))
+    (values length payload-type)))
 
 (declaim (inline alloc-string))
 
@@ -158,7 +158,7 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
       (fss-read-char stream)
       returnme)))
 
-;TODO actually test the start & length arguments
+;; TODO: actually test the start & length arguments
 (defun parse-tnetstring (string &optional (start 0) (end (length string)))
   (declare (type simple-string string)
 	   (type fixnum start end))
@@ -166,7 +166,7 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
    the string is not a valid tnetstring"
   (let ((fake-stream (make-fake-string-stream :data string :length end
 					      :pos (1- start))))
-	  (values (parse-tnetstream fake-stream) (1+ (fss-pos fake-stream)))))
+    (values (parse-tnetstream fake-stream) (1+ (fss-pos fake-stream)))))
 
 (defun parse-tnetbytes (string &optional (start 0) (end (length string)))
   (declare (type (simple-array (unsigned-byte 8) (*)) string)
@@ -175,7 +175,7 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
    the string is not a valid tnetstring"
   (let ((fake-stream (make-fake-string-stream :data string :length end
 					      :pos (1- start))))
-	  (values (parse-tnetstream fake-stream) (1+ (fss-pos fake-stream)))))
+    (values (parse-tnetstream fake-stream) (1+ (fss-pos fake-stream)))))
 
 (defmacro with-partial-file ((stream length) &body b)
   (let ((end (gensym)))
@@ -186,16 +186,16 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
 (defun parse-list (stream length)
   (declare (type fixnum length))
   (if (= length 0)
-    *empty-list*
-    (with-partial-file (stream length)
-      (loop for value = (parse-tnetstream stream)
-       collect value
-       while (not (eof-p))))))
+      *empty-list*
+      (with-partial-file (stream length)
+        (loop for value = (parse-tnetstream stream)
+           collect value
+           while (not (eof-p))))))
 
 (defun parse-pair (stream)
   (let* ((key (parse-tnetstream stream))
 	 (value (parse-tnetstream stream)))
-      (values key value)))
+    (values key value)))
 
 
 (defun parse-dict-to-alist (stream length)
@@ -230,17 +230,17 @@ then outputs to a string.  Otherwise outputs to stream"
       (dump-tnetstring-internal data stream)))
 
 (let ((length-print (pprint-dispatch most-positive-fixnum)))
-(defun output-netstring (data identifier  stream)
-  (declare (type string data)
-	   (type stream stream)
-	   (type character identifier))
-  
-  #+sbcl(funcall length-print stream (length data))
-  #-sbcl(write (length data) :stream stream)
-  ;(format stream "~D" (length data))
-  (write-char #\: stream)
-  (write-sequence data stream)
-  (write-char identifier stream)))
+  (defun output-netstring (data identifier  stream)
+    (declare (type string data)
+             (type stream stream)
+             (type character identifier))
+    
+    #+sbcl(funcall length-print stream (length data))
+    #-sbcl(write (length data) :stream stream)
+                                        ;(format stream "~D" (length data))
+    (write-char #\: stream)
+    (write-sequence data stream)
+    (write-char identifier stream)))
 
 (defun dump-tnetstring-fixnum (n stream)
   (declare (type fixnum n)
@@ -271,9 +271,9 @@ then outputs to a string.  Otherwise outputs to stream"
    (with-output-to-string (s)
      (loop for k being the hash-key of h
 	for v being the hash-value of h
-	  when (not (typep k '(or string symbol)))
-	    do (error 'type-error :expected-type '(or string symbol)
-		   :datum k)
+        when (not (typep k '(or string symbol)))
+        do (error 'type-error :expected-type '(or string symbol)
+                  :datum k)
 	do (dump-tnetstring-internal k s)
 	do (dump-tnetstring-internal v s)))
    #\} stream))
@@ -284,10 +284,10 @@ then outputs to a string.  Otherwise outputs to stream"
   (output-netstring
    (with-output-to-string (s)
      (loop for pair in alist
-	  for k = (car pair)
-	  when (not (typep k '(or string symbol)))
+        for k = (car pair)
+        when (not (typep k '(or string symbol)))
 	do (error 'type-error :expected-type '(or string symbol)
-		   :datum k)
+                  :datum k)
 	do (dump-tnetstring-internal (car pair) s)
 	do (dump-tnetstring-internal (cdr pair) s)))
    #\} stream))
@@ -329,8 +329,8 @@ then outputs to a string.  Otherwise outputs to stream"
      (dump-tnetstring-int data stream))
     ((typep data 'hash-table)
      (dump-tnetstring-hash data stream))
-    ;((typep data 'real)
-     ;(dump-tnetstring-float data stream))
+                                        ;((typep data 'real)
+                                        ;(dump-tnetstring-float data stream))
     ((null data)
      (write-sequence *nil-encode* stream))
     ((typep data 'list)
@@ -362,11 +362,11 @@ then outputs to a string.  Otherwise outputs to stream"
 
 (defun myshow (x)
   (if (typep x 'hash-table)
-    (format nil "{~{~S: ~S~}}"
-            (loop for k being the hash-key of x
-                  collect k
-                  collect (gethash k x)))
-    (format nil "~S" x)))
+      (format nil "{~{~S: ~S~}}"
+              (loop for k being the hash-key of x
+                 collect k
+                 collect (gethash k x)))
+      (format nil "~S" x)))
 
 (defun test ()
   (loop for (data expect) in *tests*
@@ -379,6 +379,6 @@ then outputs to a string.  Otherwise outputs to stream"
 
 (defun test-dump ()
   (loop for (data expect) in *tests*
-        do (let ((string (dump-tnetstring expect)))
-             (format t "~&~A~&" (equal string data))
-             (format t "EXPECT: ~S GOT: ~S" data string))))
+     do (let ((string (dump-tnetstring expect)))
+          (format t "~&~A~&" (equal string data))
+          (format t "EXPECT: ~S GOT: ~S" data string))))
