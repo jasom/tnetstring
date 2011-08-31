@@ -1,7 +1,7 @@
 ;;;; package.lisp
 
 (defpackage #:tnetstring
-  (:use #:cl #:alexandria #:flexi-streams)
+  (:use #:cl #:alexandria)
   (:export :parse-tnetstring
            :parse-tnetbytes
            :dump-tnetstring

@@ -2,7 +2,7 @@
 
 (asdf:defsystem #:tnetstring
   :depends-on (#:alexandria
-               #:flexi-streams)
+               #:babel)
   :serial t
   :components ((:file "package")
                (:file "camel-case")
