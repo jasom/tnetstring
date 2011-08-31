@@ -43,9 +43,20 @@
      with length of-type fixnum = 0
      when (eq b #.(char-code #\:)) return (values length (1+ i))
      do (setf length
-              (+ (* length 10)
-                 (- b (char-code #\0))))
-     finally (return nil)))
+              (+ (the fixnum (ash length 3)) (ash length 1)
+                 (- b #.(char-code #\0))))
+     finally (return (values nil nil))))
+
+(defmacro parsing ((bytes start end) &body body)
+  (once-only (bytes start end)
+    (with-unique-names (value position pos)
+      `(let ((,position ,start))
+         (flet ((next-tnetstring ()
+                  (multiple-value-bind (,value ,pos)
+                      (parse-tnetstring ,bytes ,position ,end)
+                    (setf ,position ,pos)
+                    ,value)))
+           ,@body)))))
 
 (defun parse-tnetstring (bytes &optional (start 0) (end (length bytes)))
   (declare ((simple-array (unsigned-byte 8)) bytes)
@@ -55,7 +66,7 @@
     (declare ((or null fixnum) length start))
     (if (or (null length)
             (> (+ start length) end))
-        'eof
+        (values 'eof nil)
         (let* ((end (+ start length))
                (next (1+ end))
                (payload-type (aref bytes end)))
@@ -73,12 +84,11 @@
                    ;; dictionary
                    (#.(char-code #\})
                       (let ((alist
-                             (let ((start start))
+                             (parsing (bytes start end)
                                (loop
-                                  for (key pos1) = (multiple-value-list (parse-tnetstring bytes start end))
+                                  for key = (next-tnetstring)
                                   until (eq key 'eof)
-                                  for (val pos2) = (multiple-value-list (parse-tnetstring bytes pos1 end))
-                                  do (setf start pos2)
+                                  for val = (next-tnetstring)
                                   collect (cons key val)))))
                         (if (eq *dict-decode-type* :hash-table)
                             (alist-hash-table alist)
@@ -86,11 +96,10 @@
                    ;; list
                    (#.(char-code #\])
                       (or
-                       (let ((start start))
+                       (parsing (bytes start end)
                          (loop
-                            for (val pos) = (multiple-value-list (parse-tnetstring bytes start end))
+                            for val = (next-tnetstring)
                             until (eq val 'eof)
-                            do (setf start pos)
                             collect val))
                        *empty-list*))
                    ;; boolean
@@ -107,32 +116,42 @@
 
 (defun print-integer (n)
   (declare (integer n))
-  (if (zerop n)
-      #.(make-array 1 :element-type '(unsigned-byte 8) :initial-element (char-code #\0))
-      (let ((sign nil))
-        (when (minusp n)
-          (setf sign t
-                n (- n)))
-        (let ((length
-               (loop for i of-type integer = n then (floor i 10) while (plusp i) count t))
-              bytes)
-          (when sign
-            (incf length))
-          (setf bytes (make-array length :element-type '(unsigned-byte 8)))
-          (do ((p (1- length) (1- p)))
-              ((zerop n))
-            (multiple-value-bind (div mod)
-                (floor n 10)
-              (setf (aref bytes p) (+ mod #.(char-code #\0))
-                    n div)))
-          (when sign
-            (setf (aref bytes 0) #.(char-code #\-)))
-          bytes))))
+  (macrolet ((specialized-integer (type)
+               `(let ((sign nil))
+                  (declare (,type n))
+                  (when (minusp n)
+                    (setf sign t
+                          n (- n)))
+                  (let ((length
+                         (loop for i of-type ,type = n then (truncate i 10) while (plusp i) count t))
+                        bytes)
+                    (declare (,type length))
+                    (when sign
+                      (incf length))
+                    (setf bytes (make-array length :element-type '(unsigned-byte 8)))
+                    (do ((p (1- length) (1- p)))
+                        ((zerop n))
+                      (multiple-value-bind (div mod)
+                          (truncate n 10)
+                        (setf (aref bytes p) (+ mod #.(char-code #\0))
+                              n div)))
+                    (when sign
+                      (setf (aref bytes 0) #.(char-code #\-)))
+                    bytes))))
+    (cond
+      ((zerop n)
+       #.(make-array 1 :element-type '(unsigned-byte 8) :initial-element (char-code #\0)))
+      ((typep n 'fixnum)
+       (specialized-integer fixnum))
+      ((typep n '(signed-byte 64))
+       (specialized-integer (signed-byte 64)))
+      (t
+       (specialized-integer integer)))))
 
 (defun make-tnetstring (type args)
   (declare ((unsigned-byte 8) type)
            (list args))
-  (let* ((length (the fixnum (reduce #'+ args :key #'length)))
+  (let* ((length (the fixnum (loop for arg in args sum (length arg))))
          (prefix (print-integer length))
          (total (+ length (length prefix) 2))
          (bytes (make-array total :element-type '(unsigned-byte 8)))
@@ -149,51 +168,45 @@
     (setf (aref bytes pos) type)
     bytes))
 
-(defmethod dump-tnetstring ((data (eql nil)))
-  #.(babel:string-to-octets "0:~"))
-
-(defmethod dump-tnetstring ((data (eql t)))
-  #.(babel:string-to-octets "4:true!"))
-
-(defmethod dump-tnetstring ((data float))
-  (make-tnetstring
-   #.(char-code #\^)
-   (list (babel:string-to-octets (princ-to-string data)))))
-
-(defmethod dump-tnetstring ((data hash-table))
-  (make-tnetstring
-   #.(char-code #\})
-   (loop
-      for key being the hash-keys of data using (hash-value val)
-      nconc (list (dump-tnetstring key)
-                  (dump-tnetstring val)))))
-
-(defmethod dump-tnetstring ((data integer))
-  (make-tnetstring
-   #.(char-code #\#)
-   (list (print-integer data))))
-
-(defmethod dump-tnetstring ((data list))
-  (if (and (consp (car data))
-           (keywordp (caar data)))
-      (make-tnetstring
-       #.(char-code #\})
-       (loop
-          for (key . val) in data
-          nconc (list (dump-tnetstring key)
-                      (dump-tnetstring val))))
-      (make-tnetstring
-       #.(char-code #\])
-       (mapcar #'dump-tnetstring data))))
-
-(defmethod dump-tnetstring ((data string))
-  (dump-tnetstring (babel:string-to-octets data)))
-
-(defmethod dump-tnetstring ((data symbol))
-  (dump-tnetstring (symbol-name data)))
-
-(defmethod dump-tnetstring ((data vector))
-  (make-tnetstring #.(char-code #\,) (list data)))
+(defun dump-tnetstring (data)
+  (cond
+    ((null data)
+     #.(babel:string-to-octets "0:~"))
+    ((eq data t)
+     #.(babel:string-to-octets "4:true!"))
+    ((integerp data)
+     (make-tnetstring
+      #.(char-code #\#)
+      (list (print-integer data))))
+    ((floatp data)
+     (make-tnetstring
+      #.(char-code #\^)
+      (list (babel:string-to-octets (princ-to-string data)))))
+    ((stringp data)
+     (make-tnetstring #.(char-code #\,) (list (babel:string-to-octets data))))
+    ((vectorp data)
+     (make-tnetstring #.(char-code #\,) (list data)))
+    ((symbolp data)
+     (make-tnetstring #.(char-code #\,) (list (babel:string-to-octets (symbol-name data)))))
+    ((and (listp data)
+          (consp (car data)))
+     (make-tnetstring
+      #.(char-code #\})
+      (loop
+         for (key . val) in data
+         nconc (list (dump-tnetstring key)
+                     (dump-tnetstring val)))))
+    ((listp data)
+     (make-tnetstring
+      #.(char-code #\])
+      (mapcar #'dump-tnetstring data)))
+    ((hash-table-p data)
+     (make-tnetstring
+      #.(char-code #\})
+      (loop
+         for key being the hash-keys of data using (hash-value val)
+         nconc (list (dump-tnetstring key)
+                     (dump-tnetstring val)))))))
 
 (defparameter *tests* 
   (list (list (babel:string-to-octets "0:}") nil)
