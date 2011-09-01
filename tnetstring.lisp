@@ -22,7 +22,11 @@
 			       (empty . "0:]"))
   "An alist of symbols that should decode to particular netstrings.")
 
+;; TODO: Sign!
 (defun read-integer (sequence start end)
+  "Interprets the given subsequence as a base-10 integer in a 7-bit ASCII
+   compatible encoding.  (So, UTC-8 will do fine.)  An invalid input yields
+   garbage."  
   (declare ((simple-array (unsigned-byte 8)) sequence)
            (fixnum start end))
   (the integer
@@ -35,6 +39,10 @@
        finally (return result))))
 
 (defun read-length (sequence start end)
+  "Returns as multiple values a small unsigned integer terminated by #\: and
+   the position in the sequence immediately following the terminator.  Assumes
+   a 7-bit ASCII compatible encoding, and produces garbage when given input that
+   does not meet these assumptions."
   (declare ((simple-array (unsigned-byte 8)) sequence)
            (fixnum start end))
   (loop
@@ -45,20 +53,28 @@
      do (setf length
               (+ (the fixnum (ash length 3)) (ash length 1)
                  (- b #.(char-code #\0))))
-     finally (return (values nil nil))))
+     finally (values nil nil)))
 
-(defmacro parsing ((bytes start end) &body body)
-  (once-only (bytes start end)
+(defmacro parsing ((bytes start end &key shared-p) &body body)
+  "Convenience macro for parsing successive tnetstrings from the same
+   input.  Keeps track of the necessary bookkeeping."
+  (once-only (bytes start end shared-p)
     (with-unique-names (value position pos)
       `(let ((,position ,start))
          (flet ((next-tnetstring ()
                   (multiple-value-bind (,value ,pos)
-                      (parse-tnetstring ,bytes ,position ,end)
+                      (parse-tnetstring ,bytes ,position ,end :shared-p ,shared-p)
                     (setf ,position ,pos)
                     ,value)))
            ,@body)))))
 
-(defun parse-tnetstring (bytes &optional (start 0) (end (length bytes)))
+;; Netstrings are defined as sequences of 8-bit bytes.
+;; See: http://tnetstrings.org/
+;; Also: http://cr.yp.to/proto/netstrings.txt
+(defun parse-tnetstring (bytes &optional (start 0) (end (length bytes)) &key shared-p)
+  "Reads one tnetstring from the given subsequence and returns as multiple
+   values the data and the position in the sequence immediately following
+   the data."
   (declare ((simple-array (unsigned-byte 8)) bytes)
            (fixnum start end))
   (multiple-value-bind (length start)
@@ -77,7 +93,14 @@
                    ;; "string", which for tnetstrings is an uninterpreted
                    ;; sequence of bytes
                    (#.(char-code #\,)
-                      (subseq bytes start end))
+                      ;; Sharing is a useful optimization for parsing
+                      ;; because it avoids allocating memory and
+                      ;; copying, but the result is no longer a
+                      ;; simple-array and can't easily be passed back
+                      ;; into dump-tnetstring.
+                      (if shared-p
+                          (make-array length :displaced-to bytes :displaced-index-offset start)
+                          (subseq bytes start end)))
                    ;; integer
                    (#.(char-code #\#)
                       (read-integer bytes start end))
@@ -89,7 +112,7 @@
                                   for key = (next-tnetstring)
                                   until (eq key 'eof)
                                   for val = (next-tnetstring)
-                                  collect (cons key val)))))
+                                  collect (cons (make-keyword (babel:octets-to-string key)) val)))))
                         (if (eq *dict-decode-type* :hash-table)
                             (alist-hash-table alist)
                             alist)))
@@ -115,6 +138,7 @@
             (values result next))))))
 
 (defun print-integer (n)
+  "Renders an integer into an vector of octets.  As quickly as possible."
   (declare (integer n))
   (macrolet ((specialized-integer (type)
                `(let ((sign nil))
@@ -149,6 +173,8 @@
        (specialized-integer integer)))))
 
 (defun make-tnetstring (type args)
+  "Contructs a tnetstring from the available data by prepending a length
+   and appending a type signature.  Optimized for fast concatenation."
   (declare ((unsigned-byte 8) type)
            (list args))
   (let* ((length (the fixnum (loop for arg in args sum (length arg))))
@@ -169,6 +195,7 @@
     bytes))
 
 (defun dump-tnetstring (data)
+  "Render the given item as a sequence of octets."
   (cond
     ((null data)
      #.(babel:string-to-octets "0:~"))
@@ -194,8 +221,8 @@
       #.(char-code #\})
       (loop
          for (key . val) in data
-         nconc (list (dump-tnetstring key)
-                     (dump-tnetstring val)))))
+         collect (dump-tnetstring key)
+         collect (dump-tnetstring val))))
     ((listp data)
      (make-tnetstring
       #.(char-code #\])
@@ -205,8 +232,8 @@
       #.(char-code #\})
       (loop
          for key being the hash-keys of data using (hash-value val)
-         nconc (list (dump-tnetstring key)
-                     (dump-tnetstring val)))))))
+         collect (dump-tnetstring key)
+         collect (dump-tnetstring val))))))
 
 (defparameter *tests* 
   (list (list (babel:string-to-octets "0:}") nil)
@@ -220,7 +247,8 @@
         (list (babel:string-to-octets "4:true!") t)
         (list (babel:string-to-octets "5:false!") nil)
         (list (babel:string-to-octets "10:,") (babel:string-to-octets ""))
-        (list (babel:string-to-octets "24:5:12345#5:67890#5:xxxxx,]") (list 12345 67890 (babel:string-to-octets "xxxxx")))))
+        (list (babel:string-to-octets "24:5:12345#5:67890#5:xxxxx,]") (list 12345 67890 (babel:string-to-octets "xxxxx"))))
+  "Zed's compatibility suite.")
 
 (defun myshow (x)
   (if (typep x 'hash-table)

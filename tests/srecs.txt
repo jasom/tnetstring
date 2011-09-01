@@ -1,4 +1,3 @@
-
 ((:PATH . "/") (:|host| . "default") (:METHOD . "HEAD") (:VERSION . "HTTP/1.1")
  (:URI . "/")) 
 ((:PATH . "/") (:|accept-encoding| . "foo") (:|host| . "default")
@@ -189,4 +188,5 @@
  (:VERSION . "HTTP/1.1") (:URI . "http://foo.example.com:1234/bt.torrent")) 
 ((:PATH . "<policy-file-request") (:METHOD . "XML")) 
 ((:PATH . "/") (:|host| . "localhost") (:METHOD . "GET")
- (:VERSION . "HTTP/1.1") (:URI . "http://localhost:8080/iesucks")) 
+ (:VERSION . "HTTP/1.1") (:URI . "http://localhost:8080/iesucks"))
+ 
