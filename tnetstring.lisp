@@ -17,26 +17,25 @@
 (defparameter *null* :null
   "What to decode tnetstring null-object into")
 
-(defparameter *encode-table* '((false . "5:false!")
-			       (null . "0:~")
-			       (empty . "0:]"))
-  "An alist of symbols that should decode to particular netstrings.")
-
-;; TODO: Sign!
 (defun read-integer (sequence start end)
   "Interprets the given subsequence as a base-10 integer in a 7-bit ASCII
    compatible encoding.  (So, UTC-8 will do fine.)  An invalid input yields
    garbage."  
   (declare ((simple-array (unsigned-byte 8)) sequence)
            (fixnum start end))
-  (the integer
-    (loop
-       for i of-type fixnum from start below end
-       with result of-type integer = 0
-       do (setf result
-                (+ (* result 10)
-                   (- (aref sequence i) #.(char-code #\0))))
-       finally (return result))))
+  (let ((sign 1))
+    (declare (integer sign))
+    (when (= (aref sequence start) #.(char-code #\-))
+      (setf sign -1
+            start (1+ start)))
+    (the integer
+      (loop
+         for i of-type fixnum from start below end
+         with result of-type integer = 0
+         do (setf result
+                  (+ (* result 10)
+                     (- (aref sequence i) #.(char-code #\0))))
+         finally (return (* sign result))))))
 
 (defun read-length (sequence start end)
   "Returns as multiple values a small unsigned integer terminated by #\: and
