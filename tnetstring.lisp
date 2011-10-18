@@ -182,14 +182,18 @@
          (bytes (make-array total :element-type '(unsigned-byte 8)))
          (pos 0))
     (declare (fixnum pos))
-    (setf (subseq bytes 0 (length prefix)) prefix
-          pos (length prefix))
+    (loop
+       for byte across prefix
+       do (setf (aref bytes pos) byte
+                pos (1+ pos)))
     (setf (aref bytes pos) (char-code #\:)
           pos (1+ pos))
     (dolist (arg args)
       (declare ((simple-array (unsigned-byte 8)) arg))
-      (setf (subseq bytes pos (+ pos (length arg))) arg
-            pos (+ pos (length arg))))
+      (loop
+         for byte across arg
+         do (setf (aref bytes pos) byte
+                  pos (1+ pos))))
     (setf (aref bytes pos) type)
     bytes))
 
