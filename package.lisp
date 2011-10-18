@@ -5,6 +5,9 @@
   (:export :parse-tnetstring
            :parse-tnetbytes
            :dump-tnetstring
+           :parsing
+           :read-integer
+           :next-tnetstring
 	   :*dict-decode-type*
 	   :*false*
 	   :*empty-list*
