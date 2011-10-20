@@ -64,9 +64,19 @@
 (defun benchmark-encode (iters)
   (let ((tests (with-open-file (s "tests/srecs.txt")
                  (let ((done (gensym)))
+		   (let ((*readtable* (copy-readtable)))
+		     (set-macro-character #\"
+					   (lambda (stream char)
+					     (let ((string
+						     (loop for x = (read-char stream t nil t)
+							   while (not (equal x #\"))
+							   when (equal x #\\) do (setq x (read-char stream t nil t))
+							   collect (char-code x))))
+					       (make-array (list (length string)) :element-type '(unsigned-byte 8)
+							   :initial-contents string))))
                    (loop for item = (read s nil done)
                       until (eq item done)
-                      collect item)))))
+                      collect item))))))
     (time (dotimes (_ iters)
             (mapc #'tnetstring:dump-tnetstring tests)))))
 
