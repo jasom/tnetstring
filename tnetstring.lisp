@@ -17,6 +17,27 @@
 (defparameter *null* :null
   "What to decode tnetstring null-object into")
 
+(declaim (inline dumb-byte-char
+		 dumb-char-byte))
+(defun dumb-byte-char (v)
+  (declare (type (simple-array (unsigned-byte 8) (*)) v))
+  "This is a dumb way to convert a byte-vector to a string.
+However, it is 100% reversible, so you can re-encode correctly if needed.
+Also it is significantly faster than (map 'string #code-char v) on sbcl"
+(let ((s (make-string (length v))))
+  (dotimes (i (length v) s)
+    (setf (aref s i) (code-char (aref v i))))))
+
+#-sbcl(defun dumb-char-byte (s)
+        (declare (type simple-string s))
+        (let ((v (make-array (list (length s)) :element-type '(unsigned-byte 8)
+                             :initial-element 0)))
+          (dotimes (i (length s) v)
+            (setf (aref v i) (char-code (aref s i))))))
+#+sbcl(defun dumb-char-byte (s)
+        (babel:string-to-octets s))
+
+
 (defun read-integer (sequence start end)
   "Interprets the given subsequence as a base-10 integer in a 7-bit ASCII
    compatible encoding.  (So, UTC-8 will do fine.)  An invalid input yields
@@ -111,7 +132,7 @@
                                   for key = (next-tnetstring)
                                   until (eq key 'eof)
                                   for val = (next-tnetstring)
-                                  collect (cons (make-keyword (babel:octets-to-string key)) val)))))
+                                  collect (cons (make-keyword (dumb-byte-char key)) val)))))
                         (if (eq *dict-decode-type* :hash-table)
                             (alist-hash-table alist)
                             alist)))
@@ -217,9 +238,10 @@
     ((vectorp data)
      (make-tnetstring #.(char-code #\,) (list data)))
     ((symbolp data)
-     (make-tnetstring #.(char-code #\,) (list (babel:string-to-octets (symbol-name data)))))
+     (make-tnetstring #.(char-code #\,) (list (dumb-char-byte (symbol-name data)))))
     ((and (listp data)
-          (consp (car data)))
+          (consp (car data))
+          (symbolp (caar data)))
      (make-tnetstring
       #.(char-code #\})
       (loop
