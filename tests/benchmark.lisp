@@ -38,8 +38,9 @@
       (let ((done (gensym)))
         (loop
            for item = (read s nil done)
+           with titem = nil
            until (eq item done)
-           for titem = (tnetstring:parse-tnetstring (babel:string-to-octets (read-line tnet)))
+           do (setq titem (tnetstring:parse-tnetstring (babel:string-to-octets (read-line tnet))))
            count (a-test item titem) into passed
            sum 1 into total
            finally (progn

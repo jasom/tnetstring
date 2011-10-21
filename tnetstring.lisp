@@ -3,6 +3,7 @@
 
 (in-package #:tnetstring)
 (declaim (optimize (speed 3) (safety 0)))
+;(declaim (optimize (debug 3) (safety 3)))
 
 (defparameter *dict-decode-type* :alist
   "What to encode tnetstring 'dictionaries' into.
@@ -42,10 +43,10 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
   "Interprets the given subsequence as a base-10 integer in a 7-bit ASCII
    compatible encoding.  (So, UTC-8 will do fine.)  An invalid input yields
    garbage."  
-  (declare ((simple-array (unsigned-byte 8)) sequence)
+  (declare (type (simple-array (unsigned-byte 8)) sequence)
            (fixnum start end))
   (let ((sign 1))
-    (declare (integer sign))
+    (declare (type integer sign))
     (when (= (aref sequence start) #.(char-code #\-))
       (setf sign -1
             start (1+ start)))
@@ -63,7 +64,7 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
    the position in the sequence immediately following the terminator.  Assumes
    a 7-bit ASCII compatible encoding, and produces garbage when given input that
    does not meet these assumptions."
-  (declare ((simple-array (unsigned-byte 8)) sequence)
+  (declare (type (simple-array (unsigned-byte 8)) sequence)
            (fixnum start end))
   (loop
      for i of-type fixnum from start below end
@@ -95,19 +96,19 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
   "Reads one tnetstring from the given subsequence and returns as multiple
    values the data and the position in the sequence immediately following
    the data."
-  (declare ((simple-array (unsigned-byte 8)) bytes)
-           (fixnum start end))
+  (declare (type (simple-array (unsigned-byte 8)) bytes)
+           (type fixnum start end))
   (multiple-value-bind (length start)
       (read-length bytes start end)
-    (declare ((or null fixnum) length start))
+    (declare (type (or null fixnum) length start))
     (if (or (null length)
             (> (+ start length) end))
         (values 'eof nil)
         (let* ((end (+ start length))
                (next (1+ end))
                (payload-type (aref bytes end)))
-          (declare (fixnum end next)
-                   ((unsigned-byte 8) payload-type))
+          (declare (type fixnum end next)
+                   (type (unsigned-byte 8) payload-type))
           (let ((result
                  (ecase payload-type
                    ;; "string", which for tnetstrings is an uninterpreted
@@ -130,8 +131,9 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
                              (parsing (bytes start end)
                                (loop
                                   for key = (next-tnetstring)
+                                  with val = nil
                                   until (eq key 'eof)
-                                  for val = (next-tnetstring)
+                                  do (setq val  (next-tnetstring))
                                   collect (cons (make-keyword (dumb-byte-char key)) val)))))
                         (if (eq *dict-decode-type* :hash-table)
                             (alist-hash-table alist)
@@ -159,17 +161,17 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
 
 (defun print-integer (n)
   "Renders an integer into an vector of octets.  As quickly as possible."
-  (declare (integer n))
+  (declare (type integer n))
   (macrolet ((specialized-integer (type)
                `(let ((sign nil))
-                  (declare (,type n))
+                  (declare (type ,type n))
                   (when (minusp n)
                     (setf sign t
                           n (- n)))
                   (let ((length
                          (loop for i of-type ,type = n then (truncate i 10) while (plusp i) count t))
                         bytes)
-                    (declare (,type length))
+                    (declare (type ,type length))
                     (when sign
                       (incf length))
                     (setf bytes (make-array length :element-type '(unsigned-byte 8)))
@@ -195,14 +197,14 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
 (defun make-tnetstring (type args)
   "Contructs a tnetstring from the available data by prepending a length
    and appending a type signature.  Optimized for fast concatenation."
-  (declare ((unsigned-byte 8) type)
+  (declare (type (unsigned-byte 8) type)
            (list args))
   (let* ((length (the fixnum (loop for arg in args sum (length arg))))
          (prefix (print-integer length))
          (total (+ length (length prefix) 2))
          (bytes (make-array total :element-type '(unsigned-byte 8)))
          (pos 0))
-    (declare (fixnum pos))
+    (declare (type fixnum pos))
     (loop
        for byte across prefix
        do (setf (aref bytes pos) byte
@@ -210,7 +212,7 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
     (setf (aref bytes pos) (char-code #\:)
           pos (1+ pos))
     (dolist (arg args)
-      (declare ((simple-array (unsigned-byte 8)) arg))
+      (declare (type (simple-array (unsigned-byte 8)) arg))
       (loop
          for byte across arg
          do (setf (aref bytes pos) byte
@@ -278,7 +280,7 @@ Also it is significantly faster than (map 'string #code-char v) on sbcl"
 (defun myshow (x)
   (if (typep x 'hash-table)
       (format nil "{~{~S: ~S~}}"
-              (loop for k being the hash-key of x
+              (loop for k being the hash-keys of x
                  collect k
                  collect (gethash k x)))
       (format nil "~S" x)))
