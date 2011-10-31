@@ -9,6 +9,9 @@
   "What to encode tnetstring 'dictionaries' into.
    Valid values are :alist and :hash-table")
 
+(defparameter *intern-keys* t
+  "Should we calle make-keyword on dictionary keys?")
+
 (defparameter *false* nil
   "What to decode tnetstring boolean 'false' into.")
 
@@ -142,7 +145,11 @@
                                   with val = nil
                                   until (eq key 'eof)
                                   do (setq val  (next-tnetstring))
-                                  collect (cons (make-keyword (dumb-byte-char key)) val)))))
+                                  collect (cons 
+					   (if *intern-keys*
+					       (make-keyword (dumb-byte-char key))
+					       key)
+					   val)))))
                         (if (eq *dict-decode-type* :hash-table)
                             (alist-hash-table alist)
                             alist)))

@@ -1,5 +1,5 @@
 (ql:quickload :tnetstring)
-(ql:quickload :cl-json)
+(ql:quickload :yason)
 
 (defun compare-alists (a b)
   (and (= (length a) (length b))
@@ -92,15 +92,14 @@
             (mapc #'tnetstring:parse-tnetstring test-strings)))))
 
 (defun benchmark-json-decode (iters )
-  (let ((json:*json-identifier-name-to-lisp* (lambda (x) x))
-        (json:*lisp-identifier-name-to-json* (lambda (x) x)))
+  (let ((json:*parse-object-as* :alist))
     (let ((tests (with-open-file (j "tests/json.txt")
                    (let ((done (gensym)))
                      (loop for item = (read-line j nil done)
                         until (eq item done)
                         collect item)))))
       (time (dotimes (_ iters)
-              (loop for item in tests do (json:decode-json-from-string item)))))))
+              (loop for item in tests do (json:parse item)))))))
 
 (defmacro run-tests (form)
   `(multiple-value-bind (a b) ,form
@@ -122,6 +121,8 @@
 (benchmark-encode 1000)
 (format t "~&TNET decode~&")
 (benchmark-decode 1000)
+(format t "~&TNET decode, no interning~&")
+(let ((tnetstring::*intern-keys* nil))(benchmark-decode 1000))
 (format t "~&TNET decode (hash-table dictionaries)~&")
 (let ((tnetstring:*dict-decode-type* :hash-table))
   (benchmark-decode 1000))
